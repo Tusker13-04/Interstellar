@@ -1,0 +1,9 @@
+polars
+fastapi
+pydantic
+typing
+python-multipart
+httpx
+pandas
+numpy
+uvicorn

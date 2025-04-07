@@ -1,0 +1,11 @@
+@font-face {
+    font-family: "Aeonik Pro";
+    src: url("../public/fonts/620e5796f94823392179d875_AeonikPro-Regular.ttf") format("woff2");
+    font-weight: normal;
+    font-style: normal;
+  }
+  
+  * {
+    font-family: "Aeonik Pro", sans-serif;
+  }
+  

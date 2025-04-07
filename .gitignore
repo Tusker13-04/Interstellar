@@ -1,0 +1,5 @@
+__pycache__/*
+node_modules/*
+algos/__pycache__/*
+routers/__pycache__/*
+.vscode/*
