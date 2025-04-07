@@ -1,3 +1,5 @@
+const API_BASE_URL = 'http://host.docker.internal:8000/api'; // Use the service name defined in Docker Compose
+
 export const getPlacementRecommendations = async (data) => {
   try {
     // Ensure data matches FrontendPlacementInput schema
@@ -22,7 +24,7 @@ export const getPlacementRecommendations = async (data) => {
     };
 
     console.log('Transformed data:', transformedData);
-    const response = await api.post('/placement', transformedData);
+    const response = await api.post('/placement/', transformedData);
 
     // Ensure response matches expected format
     return {
@@ -36,4 +38,4 @@ export const getPlacementRecommendations = async (data) => {
     console.error('Placement API Error:', error);
     throw error;
   }
-}; 
+};
