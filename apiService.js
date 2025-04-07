@@ -24,7 +24,7 @@ export const getPlacementRecommendations = async (data) => {
     };
 
     console.log('Transformed data:', transformedData);
-    const response = await api.post('/placement/', transformedData);
+    const response = await api.post('/placement', transformedData);
 
     // Ensure response matches expected format
     return {
