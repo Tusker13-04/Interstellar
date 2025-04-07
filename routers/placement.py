@@ -120,7 +120,7 @@ def transform_frontend_input(input_data: Dict[str, Any]) -> List[Dict[str, Any]]
     
     return transformed_items
 
-@router.post("/", response_model=PlacementResponse)
+@router.post("", response_model=PlacementResponse)
 async def process_placement(input_data: Union[PlacementInput, FrontendPlacementInput]) -> PlacementResponse:
     try:
         # Check if input is in frontend format
