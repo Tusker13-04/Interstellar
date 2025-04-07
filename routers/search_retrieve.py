@@ -48,7 +48,13 @@ logs_df = pl.DataFrame(schema={
     "details": pl.Utf8
 })
 
-def log_action(action_type: str, details: dict = None, userId: str = "", itemId: int = 0):
+def convert_timestamp(timestamp):
+    """Convert timestamps in Z format to +00:00 format."""
+    if timestamp and timestamp.endswith('Z'):
+        return timestamp.replace('Z', '+00:00')
+    return timestamp
+
+def log_action(action_type: str, details: dict = None, userId: str = "", itemId: int = 0, timestamp: str = None):
     global logs_df
 
     if not isinstance(details, dict):  # Ensure details is a dictionary
@@ -57,9 +63,16 @@ def log_action(action_type: str, details: dict = None, userId: str = "", itemId:
     # Convert details to JSON string
     details_json = json.dumps(details)
 
+    # Use provided timestamp or generate current timestamp
+    if timestamp:
+        # Convert from Z format to +00:00 format if needed
+        timestamp = convert_timestamp(timestamp)
+    else:
+        timestamp = datetime.now(timezone.utc).isoformat()
+
     # Create new log entry with proper types
     new_entry = pl.DataFrame({
-        "timestamp": [datetime.now(timezone.utc).isoformat()],
+        "timestamp": [timestamp],
         "userId": [str(userId)],
         "action_type": [str(action_type)],
         "itemId": [int(itemId) if itemId is not None else 0],
@@ -162,6 +175,7 @@ async def search_item(
             # Log the search if user_id is provided
             if user_id:
                 from routers.logs import log_action
+                # Use current timestamp
                 log_action(
                     user_id=user_id,
                     action_type="search",
@@ -324,6 +338,9 @@ def add_to_waste_items(itemId, name, reason, containerId, position):
 
 def log_retrieval(itemId, userId, timestamp):
     log_file = "item_retrievals.csv"
+    
+    # Convert timestamp if needed
+    timestamp = convert_timestamp(timestamp)
     
     if not os.path.exists(log_file):
         with open(log_file, 'w', newline='') as f:

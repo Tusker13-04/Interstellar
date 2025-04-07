@@ -27,8 +27,13 @@ logs_df = pl.DataFrame(schema={
     "details": pl.Utf8  # Store details as a string (JSON)
 })
 
+def convert_timestamp(timestamp):
+    """Convert timestamps in Z format to +00:00 format."""
+    if timestamp and timestamp.endswith('Z'):
+        return timestamp.replace('Z', '+00:00')
+    return timestamp
 
-def log_action(action_type: str, details: dict = None, userId: str = "", itemId: int = 0):
+def log_action(action_type: str, details: dict = None, userId: str = "", itemId: int = 0, timestamp: str = None):
     global logs_df
 
     if not isinstance(details, dict):  # Ensure details is a dictionary
@@ -42,9 +47,16 @@ def log_action(action_type: str, details: dict = None, userId: str = "", itemId:
 
     details_json = json.dumps(structured_details)  # Store as JSON string
 
+    # Use provided timestamp or generate current timestamp
+    if timestamp:
+        # Convert from Z format to +00:00 format if needed
+        timestamp = convert_timestamp(timestamp)
+    else:
+        timestamp = datetime.now(timezone.utc).isoformat()
+
     new_entry = pl.DataFrame(
         {
-            "timestamp": [datetime.now(timezone.utc).isoformat()],
+            "timestamp": [timestamp],
             "userId": [userId],
             "action_type": [action_type],
             "itemId": [itemId],

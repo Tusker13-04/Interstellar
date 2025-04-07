@@ -47,7 +47,7 @@ if not os.path.exists(LOG_FILE):
     # Create an empty DataFrame with the correct schema
     logs_df.write_csv(LOG_FILE)
 
-def log_action(action_type: str, details: dict = None, user_id: str = "", itemId: int = 0):
+def log_action(action_type: str, details: dict = None, user_id: str = "", itemId: int = 0, timestamp: str = None):
     global logs_df
 
     if not isinstance(details, dict):  # Ensure details is a dictionary
@@ -56,9 +56,16 @@ def log_action(action_type: str, details: dict = None, user_id: str = "", itemId
     # Convert details to JSON string
     details_json = json.dumps(details)
 
+    # Use provided timestamp or generate current timestamp
+    if timestamp:
+        # Convert from Z format to +00:00 format if needed
+        timestamp = convert_timestamp(timestamp)
+    else:
+        timestamp = datetime.now(timezone.utc).isoformat()
+
     # Create new log entry with proper types
     new_entry = pl.DataFrame({
-        "timestamp": [datetime.now(timezone.utc).isoformat()],
+        "timestamp": [timestamp],
         "user_id": [str(user_id)],
         "action_type": [str(action_type)],
         "itemId": [int(itemId) if itemId is not None else 0],
@@ -99,12 +106,14 @@ async def get_logs(
             pl.col("timestamp").str.strptime(pl.Datetime, format="%Y-%m-%dT%H:%M:%S%.f%z")
         )
 
-        # Apply filters
+        # Convert date filters from "Z" to "+00:00" format if needed
         if startDate:
+            startDate = convert_timestamp(startDate)
             start_dt = datetime.fromisoformat(startDate)
             logs_df = logs_df.filter(pl.col("timestamp") >= start_dt)
 
         if endDate:
+            endDate = convert_timestamp(endDate)
             end_dt = datetime.fromisoformat(endDate)
             logs_df = logs_df.filter(pl.col("timestamp") <= end_dt)
 
@@ -175,4 +184,40 @@ async def clear_logs():
         return {"success": True, "message": "Logs and imported files cleared successfully"}
     except Exception as e:
         print(f"Error clearing logs and files: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+def convert_timestamp(timestamp):
+    """Convert timestamps in Z format to +00:00 format."""
+    if timestamp and timestamp.endswith('Z'):
+        return timestamp.replace('Z', '+00:00')
+    return timestamp
+
+@router.post("/logs")
+async def add_log_entry(
+    action_type: str,
+    itemId: Optional[int] = None,
+    user_id: Optional[str] = None,
+    timestamp: Optional[str] = None,
+    details: Optional[dict] = None
+):
+    """Add a log entry with the given parameters."""
+    try:
+        # Convert timestamp if needed
+        if timestamp and timestamp.endswith('Z'):
+            timestamp = convert_timestamp(timestamp)
+            
+        # Log the action
+        log_action(
+            action_type=action_type,
+            itemId=itemId,
+            user_id=user_id,
+            timestamp=timestamp,
+            details=details or {}
+        )
+        
+        return {"success": True, "message": "Log entry added successfully"}
+    except Exception as e:
+        print(f"Error adding log entry: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
