@@ -26,8 +26,27 @@ const SimulationComponent = () => {
     }));
   };
 
+  // Format the date for display purposes
   const formatDate = (isoString) => {
-    return new Date(isoString).toLocaleString();
+    try {
+      return new Date(isoString).toLocaleString();
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return isoString; // Fallback to original string
+    }
+  };
+
+  // Format the date for API request (to UTC format with Z)
+  const formatDateForApi = (dateString) => {
+    if (!dateString) return '';
+    try {
+      // Create a date object and convert to UTC ISO string
+      const date = new Date(dateString);
+      return date.toISOString().split('.')[0] + 'Z'; // Remove milliseconds and add Z
+    } catch (error) {
+      console.error("Error formatting date for API:", error);
+      return dateString; // Return original string if conversion fails
+    }
   };
 
   const handleSimulate = async (e) => {
@@ -71,7 +90,8 @@ const SimulationComponent = () => {
       if (formData.numOfDays) {
         requestData.numOfDays = parseInt(formData.numOfDays);
       } else if (formData.toTimestamp) {
-        requestData.toTimestamp = formData.toTimestamp;
+        // Format timestamp in UTC Z format for API
+        requestData.toTimestamp = formatDateForApi(formData.toTimestamp);
       }
 
       console.log('Sending simulation request:', requestData);

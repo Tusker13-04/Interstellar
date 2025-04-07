@@ -1,9 +1,10 @@
 import polars as pl
-from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Tuple, Any
+from pydantic import BaseModel, Field, validator
+from typing import List, Optional, Dict, Tuple, Any, Union
 from datetime import date, datetime
 import traceback
 import os
+import re
 
 class Octant:
     """Represents a node (octant) in the Octree."""
@@ -91,23 +92,80 @@ class Position(BaseModel):
     endCoordinates: Coordinates
 
 class ItemPlacement(BaseModel):
-    itemId: int
+    itemId: Union[int, str]
     containerId: str
     position: Position
+    
+    @validator('itemId')
+    def validate_item_id(cls, v):
+        if isinstance(v, int):
+            return v
+        # Extract numeric part from strings like "test-item-1"
+        if isinstance(v, str):
+            # Try to extract the last number from the string
+            match = re.search(r'(\d+)$', v)
+            if match:
+                return int(match.group(1))
+            # If no match found, try to convert the whole string to int
+            try:
+                return int(v)
+            except ValueError:
+                pass
+        raise ValueError('Invalid itemId format, must be an integer or a string ending with digits')
+
+class RetrievalStep(BaseModel):
+    step: int
+    action: str
+    itemId: Union[int, str]
+    item_name: str
+    
+    @validator('itemId')
+    def validate_item_id(cls, v):
+        if isinstance(v, int):
+            return v
+        # Extract numeric part from strings like "test-item-1"
+        if isinstance(v, str):
+            # Try to extract the last number from the string
+            match = re.search(r'(\d+)$', v)
+            if match:
+                return int(match.group(1))
+            # If no match found, try to convert the whole string to int
+            try:
+                return int(v)
+            except ValueError:
+                pass
+        raise ValueError('Invalid itemId format, must be an integer or a string ending with digits')
 
 class RearrangementStep(BaseModel):
     step: int
     action: str  # "move", "remove", "place"
-    itemId: int
+    itemId: Union[int, str]
     from_container: str
     from_position: Position
     to_container: Optional[str] = None
     to_position: Optional[Position] = None
+    
+    @validator('itemId')
+    def validate_item_id(cls, v):
+        if isinstance(v, int):
+            return v
+        # Extract numeric part from strings like "test-item-1"
+        if isinstance(v, str):
+            # Try to extract the last number from the string
+            match = re.search(r'(\d+)$', v)
+            if match:
+                return int(match.group(1))
+            # If no match found, try to convert the whole string to int
+            try:
+                return int(v)
+            except ValueError:
+                pass
+        raise ValueError('Invalid itemId format, must be an integer or a string ending with digits')
 
 from pydantic import BaseModel, Field
 
 class Item(BaseModel):
-    itemId: int
+    itemId: Union[int, str]
     name: str
     width: float
     depth: float
@@ -117,7 +175,23 @@ class Item(BaseModel):
     preferredZone: str
     expiryDate: Optional[str] = None
     usageLimit: Optional[int] = None
-
+    
+    @validator('itemId')
+    def validate_item_id(cls, v):
+        if isinstance(v, int):
+            return v
+        # Extract numeric part from strings like "test-item-1"
+        if isinstance(v, str):
+            # Try to extract the last number from the string
+            match = re.search(r'(\d+)$', v)
+            if match:
+                return int(match.group(1))
+            # If no match found, try to convert the whole string to int
+            try:
+                return int(v)
+            except ValueError:
+                pass
+        raise ValueError('Invalid itemId format, must be an integer or a string ending with digits')
 
 class Container(BaseModel):
     containerId: str
@@ -146,34 +220,73 @@ class PlacementResponse(BaseModel):
     rearrangements: List[RearrangementStep]
 
 class Item_for_search(BaseModel):
-    itemId: int
+    itemId: Union[int, str]
     name: str
     containerId: str
     zone: str
     position: Position
-
-class RetrievalStep(BaseModel):
-    step: int
-    action: str
-    itemId: int
-    item_name: str
-
-class SearchResponse(BaseModel):
-    success: bool
-    found: bool
-    item: Optional[Item_for_search] = None
-    retrieval_steps: List[RetrievalStep] = []
+    
+    @validator('itemId')
+    def validate_item_id(cls, v):
+        if isinstance(v, int):
+            return v
+        # Extract numeric part from strings like "test-item-1"
+        if isinstance(v, str):
+            # Try to extract the last number from the string
+            match = re.search(r'(\d+)$', v)
+            if match:
+                return int(match.group(1))
+            # If no match found, try to convert the whole string to int
+            try:
+                return int(v)
+            except ValueError:
+                pass
+        raise ValueError('Invalid itemId format, must be an integer or a string ending with digits')
 
 class RetrieveItemRequest(BaseModel):
-    itemId: int
+    itemId: Union[int, str]
     userId: str
     timestamp: Optional[str] = None
+    
+    @validator('itemId')
+    def validate_item_id(cls, v):
+        if isinstance(v, int):
+            return v
+        # Extract numeric part from strings like "test-item-1"
+        if isinstance(v, str):
+            # Try to extract the last number from the string
+            match = re.search(r'(\d+)$', v)
+            if match:
+                return int(match.group(1))
+            # If no match found, try to convert the whole string to int
+            try:
+                return int(v)
+            except ValueError:
+                pass
+        raise ValueError('Invalid itemId format, must be an integer or a string ending with digits')
 
 class PlaceItemRequest(BaseModel):
-    itemId: int
+    itemId: Union[int, str]
     containerId: str
     position: Position
     timestamp: Optional[str] = None
+    
+    @validator('itemId')
+    def validate_item_id(cls, v):
+        if isinstance(v, int):
+            return v
+        # Extract numeric part from strings like "test-item-1"
+        if isinstance(v, str):
+            # Try to extract the last number from the string
+            match = re.search(r'(\d+)$', v)
+            if match:
+                return int(match.group(1))
+            # If no match found, try to convert the whole string to int
+            try:
+                return int(v)
+            except ValueError:
+                pass
+        raise ValueError('Invalid itemId format, must be an integer or a string ending with digits')
 
 class PlaceItemResponse(BaseModel):
     success: bool
@@ -191,10 +304,27 @@ class ImportContainersResponse(BaseModel):
     message: str
 
 class CargoArrangementExport(BaseModel):
-    itemId: int
+    itemId: Union[int, str]
     zone: str
     containerId: str
     coordinates: str
+    
+    @validator('itemId')
+    def validate_item_id(cls, v):
+        if isinstance(v, int):
+            return v
+        # Extract numeric part from strings like "test-item-1"
+        if isinstance(v, str):
+            # Try to extract the last number from the string
+            match = re.search(r'(\d+)$', v)
+            if match:
+                return int(match.group(1))
+            # If no match found, try to convert the whole string to int
+            try:
+                return int(v)
+            except ValueError:
+                pass
+        raise ValueError('Invalid itemId format, must be an integer or a string ending with digits')
 
 class CargoPlacementSystem:
     def __init__(self):
@@ -347,7 +477,7 @@ class TimeSimulationRequest(BaseModel):
     itemsToBeUsedPerDay: Optional[List[Dict[str, str]]] = None
 
 class ItemModel(BaseModel):
-    itemId: int
+    itemId: Union[int, str]
     name: str
     width: float
     depth: float
@@ -357,6 +487,23 @@ class ItemModel(BaseModel):
     expiryDate: Optional[date] = None
     usageLimit: int
     preferredZone: str
+    
+    @validator('itemId')
+    def validate_item_id(cls, v):
+        if isinstance(v, int):
+            return v
+        # Extract numeric part from strings like "test-item-1"
+        if isinstance(v, str):
+            # Try to extract the last number from the string
+            match = re.search(r'(\d+)$', v)
+            if match:
+                return int(match.group(1))
+            # If no match found, try to convert the whole string to int
+            try:
+                return int(v)
+            except ValueError:
+                pass
+        raise ValueError('Invalid itemId format, must be an integer or a string ending with digits')
 
 class ContainerModel(BaseModel):
     zone: str
@@ -375,34 +522,102 @@ class CompleteUndockingRequest(BaseModel):
     timestamp: str
 
 class WasteItem(BaseModel):
-    itemId: int
+    itemId: Union[int, str]
     name: str
     reason: str
     containerId: str
     position: Position
+    
+    @validator('itemId')
+    def validate_item_id(cls, v):
+        if isinstance(v, int):
+            return v
+        # Extract numeric part from strings like "test-item-1"
+        if isinstance(v, str):
+            # Try to extract the last number from the string
+            match = re.search(r'(\d+)$', v)
+            if match:
+                return int(match.group(1))
+            # If no match found, try to convert the whole string to int
+            try:
+                return int(v)
+            except ValueError:
+                pass
+        raise ValueError('Invalid itemId format, must be an integer or a string ending with digits')
 
 class WasteItemResponse(BaseModel):
     success: bool
     waste_items: List[WasteItem] = []
 
 class WasteItemRequest(BaseModel):
-    itemId: int
+    itemId: Union[int, str]
     name: str
     reason: str
     containerId: str
     position: str
+    
+    @validator('itemId')
+    def validate_item_id(cls, v):
+        if isinstance(v, int):
+            return v
+        # Extract numeric part from strings like "test-item-1"
+        if isinstance(v, str):
+            # Try to extract the last number from the string
+            match = re.search(r'(\d+)$', v)
+            if match:
+                return int(match.group(1))
+            # If no match found, try to convert the whole string to int
+            try:
+                return int(v)
+            except ValueError:
+                pass
+        raise ValueError('Invalid itemId format, must be an integer or a string ending with digits')
 
 class ReturnPlanStep(BaseModel):
     step: int
-    itemId: str
+    itemId: Union[int, str]
     item_name: str
     from_container: str
     to_container: str
+    
+    @validator('itemId')
+    def validate_item_id(cls, v):
+        if isinstance(v, int):
+            return v
+        # Extract numeric part from strings like "test-item-1"
+        if isinstance(v, str):
+            # Try to extract the last number from the string
+            match = re.search(r'(\d+)$', v)
+            if match:
+                return int(match.group(1))
+            # If no match found, try to convert the whole string to int
+            try:
+                return int(v)
+            except ValueError:
+                pass
+        raise ValueError('Invalid itemId format, must be an integer or a string ending with digits')
 
 class ReturnItem(BaseModel):
-    itemId: str
+    itemId: Union[int, str]
     name: str
     reason: str
+    
+    @validator('itemId')
+    def validate_item_id(cls, v):
+        if isinstance(v, int):
+            return v
+        # Extract numeric part from strings like "test-item-1"
+        if isinstance(v, str):
+            # Try to extract the last number from the string
+            match = re.search(r'(\d+)$', v)
+            if match:
+                return int(match.group(1))
+            # If no match found, try to convert the whole string to int
+            try:
+                return int(v)
+            except ValueError:
+                pass
+        raise ValueError('Invalid itemId format, must be an integer or a string ending with digits')
 
 class ReturnManifest(BaseModel):
     undocking_container_id: str
@@ -419,3 +634,9 @@ class ReturnPlanResponse(BaseModel):
 
 class RetrieveResponse(BaseModel):
     success: bool
+
+class SearchResponse(BaseModel):
+    success: bool
+    found: bool
+    item: Optional[Item_for_search] = None
+    retrieval_steps: List[RetrievalStep] = []

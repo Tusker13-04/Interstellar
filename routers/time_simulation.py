@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, model_validator
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Union
 import polars as pl
 import os
@@ -37,7 +37,7 @@ async def simulate_day(request: TimeSimulationRequest):
             }
         
         items_df = pl.read_csv("temp_imported_items.csv")
-        current_date = datetime.now()
+        current_date = datetime.now(timezone.utc)
 
         # Handle empty or invalid dates
         items_df = items_df.with_columns([
@@ -50,9 +50,11 @@ async def simulate_day(request: TimeSimulationRequest):
         # Calculate simulation duration
         if request.toTimestamp and request.toTimestamp.strip():
             try:
-                target_date = datetime.fromisoformat(request.toTimestamp.rstrip('Z'))
+                # Handle both Z and ISO formats
+                target_date = parse_datetime(request.toTimestamp)
                 days_to_simulate = (target_date - current_date).days
-            except ValueError:
+            except ValueError as e:
+                print(f"Error parsing timestamp: {e}")
                 days_to_simulate = request.numOfDays if request.numOfDays else 1
                 target_date = current_date + timedelta(days=days_to_simulate)
         else:
@@ -124,9 +126,12 @@ async def simulate_day(request: TimeSimulationRequest):
                             "name": str(item["name"])
                         })
 
+        # Return UTC ISO format with Z
+        target_date_iso = target_date.strftime('%Y-%m-%dT%H:%M:%SZ')
+        
         return {
             "success": True,
-            "newDate": target_date.isoformat(),
+            "newDate": target_date_iso,
             "changes": {
                 "itemsUsed": items_used,
                 "itemsExpired": items_expired,
@@ -139,6 +144,24 @@ async def simulate_day(request: TimeSimulationRequest):
             "success": False,
             "error": str(e)
         }
+
+def parse_datetime(date_str: str) -> datetime:
+    """
+    Parse datetime string in various formats including ISO and Z-format UTC timestamps.
+    Returns a datetime object with UTC timezone.
+    """
+    try:
+        # Try parsing as ISO format with timezone
+        if '+' in date_str or '-' in date_str[10:]:  # Check if timezone info is present
+            return datetime.fromisoformat(date_str).astimezone(timezone.utc)
+        # Handle Z format (UTC)
+        elif date_str.endswith('Z'):
+            return datetime.strptime(date_str, '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=timezone.utc)
+        # Simple ISO format without timezone (assume UTC)
+        else:
+            return datetime.fromisoformat(date_str).replace(tzinfo=timezone.utc)
+    except Exception as e:
+        raise ValueError(f"Failed to parse datetime '{date_str}': {str(e)}")
 
 def parse_expiryDate(date_str: str) -> datetime:
     """Parse date string in either YYYY-MM-DD or DD-MM-YY format."""
