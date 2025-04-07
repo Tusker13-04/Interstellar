@@ -7,6 +7,7 @@ app = FastAPI(
     description="API for managing cargo placement, retrieval, waste, and time simulation.",
     version="1.0.0"
 )
+app = FastAPI(redirect_slashes=False)
 
 # Add CORS middleware with proper configuration
 app.add_middleware(
