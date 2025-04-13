@@ -20,7 +20,7 @@ function SideNavBar() {
             className="text-2xl md:text-3xl font-bold tracking-wide font-aeonik"
             style={{ color: "#DBFF00" }}
           >
-            INTERSTELLAR
+            <h1>INTERSTELLAR</h1>
           </div>
         </Link>
       </div>

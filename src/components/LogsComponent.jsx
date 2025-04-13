@@ -127,166 +127,153 @@ const LogsComponent = () => {
 
   return (
     <div className="max-w-6xl mx-auto p-6">
-      <div className="bg-white shadow-lg rounded-lg p-6">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">Activity Logs</h2>
+  <div className="relative overflow-hidden z-10 bg-gray-800 p-8 rounded-lg shadow-md 
+    before:w-24 before:h-24 before:absolute before:bg-purple-600 before:rounded-full before:-z-10 before:blur-2xl 
+    after:w-32 after:h-32 after:absolute after:bg-sky-400 after:rounded-full after:-z-10 after:blur-xl after:top-24 after:-right-12">
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Start Date
-            </label>
-            <input
-              type="datetime-local"
-              name="startDate"
-              value={filters.startDate}
-              onChange={handleChange}
-              className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+    <h2 className="text-2xl font-bold text-white mb-6">Activity Logs</h2>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              End Date
-            </label>
-            <input
-              type="datetime-local"
-              name="endDate"
-              value={filters.endDate}
-              onChange={handleChange}
-              className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-2">Start Date</label>
+        <input
+          type="datetime-local"
+          name="startDate"
+          value={filters.startDate}
+          onChange={handleChange}
+          className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white"
+        />
+      </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Action Type
-            </label>
-            <input
-              type="text"
-              name="action_type"
-              placeholder="Filter by Action Type"
-              value={filters.action_type}
-              onChange={handleChange}
-              className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-2">End Date</label>
+        <input
+          type="datetime-local"
+          name="endDate"
+          value={filters.endDate}
+          onChange={handleChange}
+          className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white"
+        />
+      </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Item ID
-            </label>
-            <input
-              type="text"
-              name="item_id"
-              placeholder="Filter by Item ID"
-              value={filters.item_id}
-              onChange={handleChange}
-              className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-2">Action Type</label>
+        <input
+          type="text"
+          name="action_type"
+          placeholder="Filter by Action Type"
+          value={filters.action_type}
+          onChange={handleChange}
+          className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white"
+        />
+      </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              User ID
-            </label>
-            <input
-              type="text"
-              name="user_id"
-              placeholder="Filter by User ID"
-              value={filters.user_id}
-              onChange={handleChange}
-              className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-        </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-2">Item ID</label>
+        <input
+          type="text"
+          name="item_id"
+          placeholder="Filter by Item ID"
+          value={filters.item_id}
+          onChange={handleChange}
+          className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white"
+        />
+      </div>
 
-        <div className="flex justify-between mb-6">
-          <button
-            onClick={handleClearLogs}
-            disabled={loading}
-            className={`px-4 py-2 rounded-md text-white font-medium transition-colors ${
-              loading
-                ? 'bg-gray-400 cursor-not-allowed'
-                : 'bg-red-500 hover:bg-red-600'
-            }`}
-          >
-            {loading ? 'Loading...' : 'Clear All Logs'}
-          </button>
-          <button
-            onClick={fetchLogs}
-            disabled={loading || !filters.startDate || !filters.endDate}
-            className={`px-4 py-2 rounded-md text-white font-medium transition-colors ${
-              loading || !filters.startDate || !filters.endDate
-                ? 'bg-gray-400 cursor-not-allowed'
-                : 'bg-blue-500 hover:bg-blue-600'
-            }`}
-          >
-            {loading ? 'Loading...' : 'Search Logs'}
-          </button>
-        </div>
-
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-600 rounded-md">
-            {error}
-          </div>
-        )}
-
-        {success && (
-          <div className="mb-6 p-4 bg-green-50 border border-green-200 text-green-600 rounded-md">
-            {success}
-          </div>
-        )}
-
-        {logs.length > 0 && (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Timestamp
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    User ID
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Action Type
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Item ID
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Details
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {logs.map((log, index) => (
-                  <tr key={index} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatDate(log.timestamp)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {log.user_id}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {log.action_type}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {log.item_id}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      <pre className="whitespace-pre-wrap font-mono text-xs">
-                        {formatDetails(log.details)}
-                      </pre>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-2">User ID</label>
+        <input
+          type="text"
+          name="user_id"
+          placeholder="Filter by User ID"
+          value={filters.user_id}
+          onChange={handleChange}
+          className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white"
+        />
       </div>
     </div>
+
+    <div className="flex justify-between mb-6">
+      <button
+        onClick={handleClearLogs}
+        disabled={loading}
+        className={`px-4 py-2 rounded-md text-white font-bold transition-colors 
+          ${
+            loading
+              ? 'bg-gray-500 cursor-not-allowed'
+              : 'bg-gradient-to-r from-purple-600 via-purple-400 to-blue-500 hover:opacity-80'
+          }`}
+      >
+        {loading ? 'Loading...' : 'Clear All Logs'}
+      </button>
+
+      <button
+        onClick={fetchLogs}
+        disabled={loading || !filters.startDate || !filters.endDate}
+        className={`px-4 py-2 rounded-md text-white font-bold transition-colors 
+          ${
+            loading || !filters.startDate || !filters.endDate
+              ? 'bg-gray-500 cursor-not-allowed'
+              : 'bg-gradient-to-r from-purple-600 via-purple-400 to-blue-500 hover:opacity-80'
+          }`}
+      >
+        {loading ? 'Loading...' : 'Search Logs'}
+      </button>
+    </div>
+
+    {error && (
+      <div className="mb-6 p-4 bg-red-500/10 border border-red-400 text-red-300 rounded-md">
+        {error}
+      </div>
+    )}
+
+    {success && (
+      <div className="mb-6 p-4 bg-green-500/10 border border-green-400 text-green-300 rounded-md">
+        {success}
+      </div>
+    )}
+
+    {logs.length > 0 && (
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-700">
+          <thead className="bg-gray-700">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Timestamp</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">User ID</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Action Type</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Item ID</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Details</th>
+            </tr>
+          </thead>
+          <tbody className="bg-gray-800 divide-y divide-gray-700">
+            {logs.map((log, index) => (
+              <tr key={index} className="hover:bg-gray-700">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
+                  {formatDate(log.timestamp)}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
+                  {log.user_id}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
+                  {log.action_type}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
+                  {log.item_id}
+                </td>
+                <td className="px-6 py-4 text-sm text-white">
+                  <pre className="whitespace-pre-wrap font-mono text-xs text-purple-300">
+                    {formatDetails(log.details)}
+                  </pre>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+  </div>
+</div>
+
   );
 };
 

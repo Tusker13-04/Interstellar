@@ -90,139 +90,142 @@ const SearchComponent = () => {
   };
 
   return (
-    <div className="p-6 bg-gray-100 shadow-md rounded-md w-full max-w-2xl">
-      <h2 className="text-xl font-bold mb-4">Search Item</h2>
-      
-      <div className="space-y-3 mb-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Item ID
-          </label>
-          <input
-            type="text"
-            name="itemId"
-            value={searchParams.itemId}
-            onChange={handleInputChange}
-            placeholder="Enter Item ID"
-            className="border p-2 w-full rounded-md"
-          />
-        </div>
+    <div className="p-8 bg-gray-800 shadow-md rounded-lg w-full max-w-2xl mx-auto relative overflow-hidden z-10 before:w-24 before:h-24 before:absolute before:bg-purple-600 before:rounded-full before:-z-10 before:blur-2xl after:w-32 after:h-32 after:absolute after:bg-sky-400 after:rounded-full after:-z-10 after:blur-xl after:top-24 after:-right-12">
+  <h2 className="text-2xl font-bold text-white mb-6">Search Item</h2>
 
-        <div className="relative">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Item Name
-          </label>
-          <input
-            type="text"
-            name="itemName"
-            value={searchParams.itemName}
-            onChange={handleInputChange}
-            placeholder="Enter Item Name"
-            className="border p-2 w-full rounded-md"
-          />
-          <p className="text-xs text-gray-500 mt-1">
-            Provide either Item ID or Item Name
-          </p>
-        </div>
+  <div className="space-y-4 mb-6">
+    <div>
+      <label className="block text-sm font-medium text-gray-300 mb-1">
+        Item ID
+      </label>
+      <input
+        type="text"
+        name="itemId"
+        value={searchParams.itemId}
+        onChange={handleInputChange}
+        placeholder="Enter Item ID"
+        className="mt-1 p-2 w-full bg-gray-700 border border-gray-600 rounded-md text-white"
+      />
+    </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            User ID (Optional)
-          </label>
-          <input
-            type="text"
-            name="userId"
-            value={searchParams.userId}
-            onChange={handleInputChange}
-            placeholder="Enter User ID"
-            className="border p-2 w-full rounded-md"
-          />
-        </div>
-      </div>
+    <div className="relative">
+      <label className="block text-sm font-medium text-gray-300 mb-1">
+        Item Name
+      </label>
+      <input
+        type="text"
+        name="itemName"
+        value={searchParams.itemName}
+        onChange={handleInputChange}
+        placeholder="Enter Item Name"
+        className="mt-1 p-2 w-full bg-gray-700 border border-gray-600 rounded-md text-white"
+      />
+      <p className="text-xs text-gray-400 mt-1">
+        Provide either Item ID or Item Name
+      </p>
+    </div>
 
-      <button
-        onClick={handleSearch}
-        disabled={loading || (!searchParams.itemId && !searchParams.itemName)}
-        className={`bg-blue-500 text-white py-2 px-4 rounded-md w-full mb-4 ${
-          loading || (!searchParams.itemId && !searchParams.itemName)
-            ? 'opacity-50 cursor-not-allowed'
-            : 'hover:bg-blue-600'
-        }`}
-      >
-        {loading ? 'Searching...' : 'Search'}
-      </button>
+    <div>
+      <label className="block text-sm font-medium text-gray-300 mb-1">
+        User ID (Optional)
+      </label>
+      <input
+        type="text"
+        name="userId"
+        value={searchParams.userId}
+        onChange={handleInputChange}
+        placeholder="Enter User ID"
+        className="mt-1 p-2 w-full bg-gray-700 border border-gray-600 rounded-md text-white"
+      />
+    </div>
+  </div>
 
-      {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-md">
-          {error}
-        </div>
-      )}
+  <button
+    onClick={handleSearch}
+    disabled={loading || (!searchParams.itemId && !searchParams.itemName)}
+    className={`bg-gradient-to-r from-purple-600 via-purple-400 to-blue-500 text-white py-2 px-4 rounded-md w-full font-bold transition-opacity ${
+      loading || (!searchParams.itemId && !searchParams.itemName)
+        ? 'opacity-50 cursor-not-allowed'
+        : 'hover:opacity-80'
+    }`}
+  >
+    {loading ? 'Searching...' : 'Search'}
+  </button>
 
-      {searchResult && (
-        <div className="mt-4 space-y-4">
-          <div className="bg-white rounded-md shadow p-4">
-            <h3 className="text-lg font-semibold mb-3">Item Details</h3>
-            <div className="space-y-2">
-              <p><strong>Name:</strong> {searchResult.item.name}</p>
-              <p><strong>Container ID:</strong> {searchResult.item.containerId}</p>
-              <p><strong>Zone:</strong> {searchResult.item.zone}</p>
+  {error && (
+    <div className="mb-4 p-3 bg-red-800 border border-red-600 text-red-100 rounded-md mt-4">
+      {error}
+    </div>
+  )}
 
-              <div className="mt-2">
-                <p><strong>Position:</strong></p>
-                <div className="mt-2">
-                  <p><strong>Start:</strong></p>
-                  <p className="ml-4">
-                    Width: {searchResult.item.position.startCoordinates.width}cm,{' '}
-                    Depth: {searchResult.item.position.startCoordinates.depth}cm,{' '}
-                    Height: {searchResult.item.position.startCoordinates.height}cm
-                  </p>
-                  <p className="mt-1"><strong>End:</strong></p>
-                  <p className="ml-4">
-                    Width: {searchResult.item.position.endCoordinates.width}cm,{' '}
-                    Depth: {searchResult.item.position.endCoordinates.depth}cm,{' '}
-                    Height: {searchResult.item.position.endCoordinates.height}cm
-                  </p>
-                </div>
-              </div>
+  {searchResult && (
+    <div className="mt-6 space-y-4">
+      <div className="bg-gray-900 rounded-md shadow p-6 text-white">
+        <h3 className="text-lg font-semibold mb-3">Item Details</h3>
+        <div className="space-y-2">
+          <p><strong>Name:</strong> {searchResult.item.name}</p>
+          <p><strong>Container ID:</strong> {searchResult.item.containerId}</p>
+          <p><strong>Zone:</strong> {searchResult.item.zone}</p>
 
-              <button
-                onClick={handleShowSteps}
-                className={`mt-4 w-full py-2 px-4 rounded-md text-white transition-colors ${
-                  showSteps ? 'bg-gray-500' : 'bg-green-500 hover:bg-green-600'
-                }`}
-              >
-                {showSteps ? 'Hide Retrieval Steps' : 'Show Retrieval Steps'}
-              </button>
-
-              {showSteps && searchResult.retrieval_steps && searchResult.retrieval_steps.length > 0 && (
-                <div className="mt-4 p-4 bg-gray-50 rounded-md border border-gray-200">
-                  <h4 className="font-medium mb-2">Retrieval Steps:</h4>
-                  <ol className="list-decimal list-inside space-y-2">
-                    {searchResult.retrieval_steps.map((step, index) => (
-                      <li key={index} className="text-sm">
-                        <span className="font-medium">{step.action}:</span> {step.item_name}
-                        {step.action === 'move' && (
-                          <div className="ml-4 text-gray-600">
-                            From: Container {step.from_container}<br/>
-                            To: Container {step.to_container}
-                          </div>
-                        )}
-                      </li>
-                    ))}
-                  </ol>
-                </div>
-              )}
-
-              {showSteps && (!searchResult.retrieval_steps || searchResult.retrieval_steps.length === 0) && (
-                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 text-yellow-700 rounded-md">
-                  No retrieval steps are needed for this item.
-                </div>
-              )}
+          <div className="mt-3">
+            <p><strong>Position:</strong></p>
+            <div className="mt-2 text-sm text-gray-300">
+              <p><strong>Start:</strong></p>
+              <p className="ml-4">
+                Width: {searchResult.item.position.startCoordinates.width}cm,{' '}
+                Depth: {searchResult.item.position.startCoordinates.depth}cm,{' '}
+                Height: {searchResult.item.position.startCoordinates.height}cm
+              </p>
+              <p className="mt-2"><strong>End:</strong></p>
+              <p className="ml-4">
+                Width: {searchResult.item.position.endCoordinates.width}cm,{' '}
+                Depth: {searchResult.item.position.endCoordinates.depth}cm,{' '}
+                Height: {searchResult.item.position.endCoordinates.height}cm
+              </p>
             </div>
           </div>
+
+          <button
+            onClick={handleShowSteps}
+            className={`mt-4 w-full py-2 px-4 rounded-md text-white font-bold transition-colors ${
+              showSteps
+                ? 'bg-gray-600 hover:bg-gray-500'
+                : 'bg-green-600 hover:bg-green-500'
+            }`}
+          >
+            {showSteps ? 'Hide Retrieval Steps' : 'Show Retrieval Steps'}
+          </button>
+
+          {showSteps && searchResult.retrieval_steps?.length > 0 && (
+            <div className="mt-4 p-4 bg-gray-700 rounded-md border border-gray-600 text-sm">
+              <h4 className="font-medium mb-2 text-white">Retrieval Steps:</h4>
+              <ol className="list-decimal list-inside space-y-2 text-gray-200">
+                {searchResult.retrieval_steps.map((step, index) => (
+                  <li key={index}>
+                    <span className="font-medium">{step.action}:</span> {step.item_name}
+                    {step.action === 'move' && (
+                      <div className="ml-4 text-gray-400">
+                        From: Container {step.from_container}<br />
+                        To: Container {step.to_container}
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+
+          {showSteps && (!searchResult.retrieval_steps || searchResult.retrieval_steps.length === 0) && (
+            <div className="mt-4 p-3 bg-yellow-800 border border-yellow-600 text-yellow-100 rounded-md">
+              No retrieval steps are needed for this item.
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
+  )}
+</div>
+
   );
 };
 

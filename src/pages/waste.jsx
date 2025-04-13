@@ -9,9 +9,8 @@ function Waste() {
       </div>
 
       <div className="flex-1 flex flex-col items-center justify-start p-10 ml-64 space-y-6">
-                <div className="bg-white shadow-lg rounded-lg p-6 w-full max-w-3xl">
+                
           <WasteManagement />
-        </div>
 
       </div>
     </div>

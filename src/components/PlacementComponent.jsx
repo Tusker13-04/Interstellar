@@ -94,13 +94,20 @@ const PlacementComponent = () => {
     };
 
     return (
-        <div className="p-6 bg-gray-100 shadow-md rounded-md w-full max-w-2xl">
-            <h2 className="text-xl font-bold mb-4">Cargo Placement</h2>
-            
-            <div className="mb-4">
-                <label className="block text-sm font-medium mb-2">Input Data (JSON format)</label>
-                <textarea
-                    placeholder={`{
+        <div
+            className="max-w-2xl mx-auto relative overflow-hidden z-10 bg-gray-800 p-8 rounded-lg shadow-md
+                       before:w-24 before:h-24 before:absolute before:bg-purple-600 before:rounded-full before:-z-10 before:blur-2xl
+                       after:w-32 after:h-32 after:absolute after:bg-sky-400 after:rounded-full after:-z-10 after:blur-xl after:top-24 after:-right-12"
+        >
+            <h2 className="text-2xl font-bold text-white mb-6">Cargo Placement</h2>
+
+            <form onSubmit={(e) => { e.preventDefault(); handlePlacement(); }} method="post">
+                <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                        Input Data (JSON format)
+                    </label>
+                    <textarea
+                        placeholder={`{
   "items": [
     {
       "itemId": "1",
@@ -123,50 +130,51 @@ const PlacementComponent = () => {
     }
   ]
 }`}
-                    onChange={handleJsonInput}
-                    className="border p-2 w-full h-96 mb-2 rounded-md font-mono text-sm"
-                />
-            </div>
-            
-            <button
-                onClick={handlePlacement}
-                disabled={loading || !inputData.items.length || !inputData.containers.length}
-                className={`py-2 px-4 rounded-md w-full mb-2 ${
-                    loading || !inputData.items.length || !inputData.containers.length
-                        ? 'bg-gray-400 cursor-not-allowed'
-                        : 'bg-blue-500 hover:bg-blue-600'
-                } text-white`}
-            >
-                {loading ? 'Processing...' : 'Generate Placement'}
-            </button>
+                        onChange={handleJsonInput}
+                        className="mt-1 p-2 w-full h-96 bg-gray-700 border border-gray-600 rounded-md text-white font-mono text-sm"
+                    />
+                </div>
+
+                <div className="flex justify-end">
+                    <button
+                        type="submit"
+                        disabled={loading || !inputData.items.length || !inputData.containers.length}
+                        className={`bg-gradient-to-r from-purple-600 via-purple-400 to-blue-500 text-white px-4 py-2 font-bold rounded-md hover:opacity-80 ${
+                            (loading || !inputData.items.length || !inputData.containers.length) && 'opacity-50 cursor-not-allowed'
+                        }`}
+                    >
+                        {loading ? 'Processing...' : 'Generate Placement'}
+                    </button>
+                </div>
+            </form>
 
             {error && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-md whitespace-pre-wrap">
+                <div className="mt-4 p-3 bg-red-100 border border-red-300 text-red-700 rounded-md whitespace-pre-wrap">
                     {error}
                 </div>
             )}
 
             {placementData && placementData.success && (
-                <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-600 rounded-md">
+                <div className="mt-4 p-3 bg-green-100 border border-green-300 text-green-700 rounded-md">
                     Placement successful! Generated {placementData.placements.length} placement(s).
                 </div>
             )}
 
             {placementData && (
-                <div className="mt-4">
-                    <h3 className="text-lg font-semibold mb-2">Placement Results</h3>
-                    
-                    <div className="bg-white rounded-md shadow p-4 mb-4">
+                <div className="mt-6">
+                    <h3 className="text-lg font-semibold text-white mb-2">Placement Results</h3>
+
+                    <div className="bg-gray-700 text-white rounded-md shadow p-4 mb-4">
                         <h4 className="font-medium mb-2">Placements ({placementData.placements.length})</h4>
-                        <pre className="bg-gray-50 p-2 rounded text-sm overflow-auto">
+                        <pre className="bg-gray-800 p-2 rounded text-sm overflow-auto">
                             {JSON.stringify(placementData.placements, null, 2)}
                         </pre>
                     </div>
 
                     {placementData.rearrangements.length > 0 && (
-                        <div className="bg-white rounded-md shadow p-4">
+                        <div className="bg-gray-700 text-white rounded-md shadow p-4">
                             <h4 className="font-medium mb-2">Required Rearrangements ({placementData.rearrangements.length})</h4>
-                            <pre className="bg-gray-50 p-2 rounded text-sm overflow-auto">
+                            <pre className="bg-gray-800 p-2 rounded text-sm overflow-auto">
                                 {JSON.stringify(placementData.rearrangements, null, 2)}
                             </pre>
                         </div>

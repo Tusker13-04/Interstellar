@@ -1,11 +1,21 @@
 @font-face {
-    font-family: "Aeonik Pro";
-    src: url("../public/fonts/620e5796f94823392179d875_AeonikPro-Regular.ttf") format("woff2");
-    font-weight: normal;
-    font-style: normal;
-  }
-  
-  * {
-    font-family: "Aeonik Pro", sans-serif;
-  }
-  
+  font-family: "Aeonik Pro";
+  src: url("../public/fonts/620e5796f94823392179d875_AeonikPro-Regular.ttf") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "RollboxBlack-axn3a";
+  src: url("../public/fonts/RollboxBlack-axn3a.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+* {
+  font-family: "Aeonik Pro", sans-serif;
+}
+
+h2 {
+  font-family: "RollboxBlack-axn3a", sans-serif;
+}

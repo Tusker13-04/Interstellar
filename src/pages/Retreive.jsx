@@ -66,79 +66,86 @@ const RetrieveItemComponent = () => {
 
   return (
     <div className="flex h-screen">
-      <div className="hidden md:block md:w-64 bg-white shadow-lg fixed h-full">
-        <SideNavBar />
-      </div>
+  <div className="hidden md:block md:w-64 bg-white shadow-lg fixed h-full">
+    <SideNavBar />
+  </div>
 
-      <div className="flex-1 flex justify-center items-center p-8 ml-64">
-        <div className="max-w-lg w-full bg-white shadow-md rounded-lg p-6">
-          <h2 className="text-2xl font-semibold mb-4 text-center">Retrieve an Item</h2>
-          <form onSubmit={handleRetrieve} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Item ID
-              </label>
-              <input 
-                type="text" 
-                name="itemId"
-                value={formData.itemId} 
-                onChange={handleInputChange} 
-                placeholder="Enter Item ID" 
-                required 
-                className="w-full border p-2 rounded-md"
-              />
-            </div>
+  <div className="flex-1 flex justify-center items-center p-8 ml-64">
+    <div className="relative max-w-md w-full bg-gray-800 p-8 rounded-lg shadow-md overflow-hidden z-10 
+        before:w-24 before:h-24 before:absolute before:bg-purple-600 before:rounded-full before:-z-10 before:blur-2xl 
+        after:w-32 after:h-32 after:absolute after:bg-sky-400 after:rounded-full after:-z-10 after:blur-xl after:top-24 after:-right-12"
+    >
+      <h2 className="text-2xl font-bold text-white mb-6 text-center">Retrieve an Item</h2>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                User ID (Optional)
-              </label>
-              <input 
-                type="text" 
-                name="userId"
-                value={formData.userId} 
-                onChange={handleInputChange} 
-                placeholder="Enter User ID" 
-                className="w-full border p-2 rounded-md"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Timestamp (Optional)
-              </label>
-              <input 
-                type="datetime-local" 
-                name="timestamp"
-                value={formData.timestamp} 
-                onChange={handleInputChange} 
-                className="w-full border p-2 rounded-md"
-              />
-            </div>
-
-            <button 
-              type="submit"
-              className={`w-full py-2 text-white rounded-md ${
-                loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600'
-              }`}
-              disabled={loading || !formData.itemId}
-            >
-              {loading ? 'Retrieving Item...' : 'Retrieve Item'}
-            </button>
-          </form>
-
-          {message && (
-            <div className={`mt-4 p-3 rounded-md ${
-              message.includes('successfully') 
-                ? 'bg-green-50 border border-green-200 text-green-600' 
-                : 'bg-red-50 border border-red-200 text-red-600'
-            }`}>
-              {message}
-            </div>
-          )}
+      <form onSubmit={handleRetrieve} className="space-y-4 text-white">
+        <div>
+          <label className="block text-sm font-medium mb-1">
+            Item ID
+          </label>
+          <input
+            type="text"
+            name="itemId"
+            value={formData.itemId}
+            onChange={handleInputChange}
+            placeholder="Enter Item ID"
+            required
+            className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md"
+          />
         </div>
-      </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">
+            User ID (Optional)
+          </label>
+          <input
+            type="text"
+            name="userId"
+            value={formData.userId}
+            onChange={handleInputChange}
+            placeholder="Enter User ID"
+            className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">
+            Timestamp (Optional)
+          </label>
+          <input
+            type="datetime-local"
+            name="timestamp"
+            value={formData.timestamp}
+            onChange={handleInputChange}
+            className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md"
+          />
+        </div>
+
+        <button
+          type="submit"
+          className={`w-full py-2 font-bold rounded-md text-white ${
+            loading
+              ? 'bg-gray-500 cursor-not-allowed'
+              : 'bg-gradient-to-r from-purple-600 via-purple-400 to-blue-500 hover:opacity-80'
+          }`}
+          disabled={loading || !formData.itemId}
+        >
+          {loading ? 'Retrieving Item...' : 'Retrieve Item'}
+        </button>
+      </form>
+
+      {message && (
+        <div className={`mt-4 p-3 rounded-md text-sm font-medium ${
+          message.includes('successfully')
+            ? 'bg-green-700 text-green-100'
+            : 'bg-red-700 text-red-100'
+        }`}>
+          {message}
+        </div>
+      )}
     </div>
+  </div>
+</div>
+
   );
 };
 
