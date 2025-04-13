@@ -222,20 +222,20 @@ const CargoContainer3D = () => {
         <div className="mt-4">
           <h3 className="text-sm font-medium mb-2">Items in Container:</h3>
           <div className="max-h-[200px] overflow-y-auto border rounded p-2">
-            <table className="min-w-full text-sm">
+            <table className="min-w-full text-sm text-white">
               <thead>
                 <tr className="bg-gray-100">
-                  <th className="px-2 py-1 text-left">Item ID</th>
-                  <th className="px-2 py-1 text-left">Name</th>
-                  <th className="px-2 py-1 text-left">Dimensions (W×D×H)</th>
+                  <th className="px-2 py-1 text-left text-white">Item ID</th>
+                  <th className="px-2 py-1 text-left text-white">Name</th>
+                  <th className="px-2 py-1 text-left text-white">Dimensions (W×D×H)</th>
                 </tr>
               </thead>
               <tbody>
                 {containerItems.map((item, index) => (
                   <tr key={`legend-${item.item_id}-${index}`} className="border-t border-gray-200">
-                    <td className="px-2 py-1">{item.item_id}</td>
-                    <td className="px-2 py-1">{item.name}</td>
-                    <td className="px-2 py-1">
+                    <td className="px-2 py-1 text-white">{item.item_id}</td>
+                    <td className="px-2 py-1 text-white">{item.name}</td>
+                    <td className="px-2 py-1 text-white">
                       {Math.round(item.end_width_cm - item.start_width_cm)}cm × 
                       {Math.round(item.end_depth_cm - item.start_depth_cm)}cm × 
                       {Math.round(item.end_height_cm - item.start_height_cm)}cm

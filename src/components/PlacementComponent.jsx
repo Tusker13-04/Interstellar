@@ -166,17 +166,108 @@ const PlacementComponent = () => {
 
                     <div className="bg-gray-700 text-white rounded-md shadow p-4 mb-4">
                         <h4 className="font-medium mb-2">Placements ({placementData.placements.length})</h4>
-                        <pre className="bg-gray-800 p-2 rounded text-sm overflow-auto">
-                            {JSON.stringify(placementData.placements, null, 2)}
-                        </pre>
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full table-auto border-collapse">
+                                <thead>
+                                    <tr className="bg-gray-50">
+                                        <th className="px-4 py-2 border">Item ID</th>
+                                        <th className="px-4 py-2 border">Container</th>
+                                        <th className="px-4 py-2 border">Position</th>
+                                        <th className="px-4 py-2 border">Dimensions</th>
+                                        <th className="px-4 py-2 border">Rotation</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {placementData.placements.map((placement, index) => (
+                                        <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                            <td className="px-4 py-2 border">{placement.itemId}</td>
+                                            <td className="px-4 py-2 border">{placement.containerId}</td>
+                                            <td className="px-4 py-2 border">
+                                                <div className="text-sm">
+                                                    <div>Start:</div>
+                                                    <div className="ml-2">
+                                                        W: {placement.position.startCoordinates.width},
+                                                        D: {placement.position.startCoordinates.depth},
+                                                        H: {placement.position.startCoordinates.height}
+                                                    </div>
+                                                    <div className="mt-1">End:</div>
+                                                    <div className="ml-2">
+                                                        W: {placement.position.endCoordinates.width},
+                                                        D: {placement.position.endCoordinates.depth},
+                                                        H: {placement.position.endCoordinates.height}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-2 border">
+                                                <div className="text-sm">
+                                                    W: {placement.position.endCoordinates.width - placement.position.startCoordinates.width}
+                                                    <br />
+                                                    D: {placement.position.endCoordinates.depth - placement.position.startCoordinates.depth}
+                                                    <br />
+                                                    H: {placement.position.endCoordinates.height - placement.position.startCoordinates.height}
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-2 border">
+                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                                    placement.rotation === 'NO_ROTATION' 
+                                                    ? 'bg-green-100 text-green-800'
+                                                    : 'bg-blue-100 text-blue-800'
+                                                }`}>
+                                                    {placement.rotation}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
 
                     {placementData.rearrangements.length > 0 && (
                         <div className="bg-gray-700 text-white rounded-md shadow p-4">
                             <h4 className="font-medium mb-2">Required Rearrangements ({placementData.rearrangements.length})</h4>
-                            <pre className="bg-gray-800 p-2 rounded text-sm overflow-auto">
-                                {JSON.stringify(placementData.rearrangements, null, 2)}
-                            </pre>
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full table-auto border-collapse">
+                                    <thead>
+                                        <tr className="bg-gray-50">
+                                            <th className="px-4 py-2 border">Item ID</th>
+                                            <th className="px-4 py-2 border">From Position</th>
+                                            <th className="px-4 py-2 border">To Position</th>
+                                            <th className="px-4 py-2 border">Type</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {placementData.rearrangements.map((rearrangement, index) => (
+                                            <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                                <td className="px-4 py-2 border">{rearrangement.itemId}</td>
+                                                <td className="px-4 py-2 border">
+                                                    <div className="text-sm">
+                                                        W: {rearrangement.from.x},
+                                                        D: {rearrangement.from.y},
+                                                        H: {rearrangement.from.z}
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-2 border">
+                                                    <div className="text-sm">
+                                                        W: {rearrangement.to.x},
+                                                        D: {rearrangement.to.y},
+                                                        H: {rearrangement.to.z}
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-2 border">
+                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                                        rearrangement.type === 'final'
+                                                        ? 'bg-green-100 text-green-800'
+                                                        : 'bg-yellow-100 text-yellow-800'
+                                                    }`}>
+                                                        {rearrangement.type}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     )}
                 </div>

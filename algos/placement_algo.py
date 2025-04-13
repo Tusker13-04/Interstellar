@@ -310,10 +310,10 @@ class AdvancedCargoPlacement:
     _container_states = {}
 
     def __init__(self, container_dims: Dict[str, float]):
-        # Convert dimensions to integers
-        self.width = int(container_dims["width"])
-        self.depth = int(container_dims["depth"])
-        self.height = int(container_dims["height"])
+        # Convert dimensions to integers and store as floats for precise calculations
+        self.width = float(container_dims["width"])
+        self.depth = float(container_dims["depth"])
+        self.height = float(container_dims["height"])
         
         # Create a unique key for this container
         self.container_key = f"{self.width}x{self.depth}x{self.height}"
@@ -321,7 +321,7 @@ class AdvancedCargoPlacement:
         # Initialize or retrieve existing state
         if self.container_key not in self._container_states:
             self._container_states[self.container_key] = {
-                'space_matrix': SparseMatrix(self.width, self.depth, self.height),
+                'space_matrix': SparseMatrix(int(self.width), int(self.depth), int(self.height)),
                 'current_placements': {},
                 'rearrangement_history': []
             }
@@ -337,16 +337,199 @@ class AdvancedCargoPlacement:
         self._dupe_cache = {}
         self.rotation_cache = {}
 
-    def _get_cached_item(self, itemId: str) -> Optional[Dict]:
-        """Get cached item data with memoization"""
-        if itemId not in self._item_cache:
-            if itemId in self.items_dict:
-                self._item_cache[itemId] = self.items_dict[itemId]
-            elif itemId in self._dupe_cache:
-                self._item_cache[itemId] = self._dupe_cache[itemId]
-            else:
-                return None
-        return self._item_cache[itemId]
+        # Add epsilon for floating point comparisons
+        self.EPSILON = 1e-6
+
+    def _validate_coordinates(self, start_coords: Dict[str, float], end_coords: Dict[str, float]) -> bool:
+        """Validate if coordinates are within container bounds and properly ordered"""
+        # Check if coordinates are within container bounds
+        if (start_coords['width'] < 0 or start_coords['width'] > self.width or
+            start_coords['depth'] < 0 or start_coords['depth'] > self.depth or
+            start_coords['height'] < 0 or start_coords['height'] > self.height or
+            end_coords['width'] < 0 or end_coords['width'] > self.width or
+            end_coords['depth'] < 0 or end_coords['depth'] > self.depth or
+            end_coords['height'] < 0 or end_coords['height'] > self.height):
+            return False
+            
+        # Check if end coordinates are greater than start coordinates
+        if (end_coords['width'] <= start_coords['width'] or
+            end_coords['depth'] <= start_coords['depth'] or
+            end_coords['height'] <= start_coords['height']):
+            return False
+            
+        return True
+
+    def _check_overlap(self, item1_start: Dict[str, float], item1_end: Dict[str, float],
+                      item2_start: Dict[str, float], item2_end: Dict[str, float]) -> bool:
+        """Check if two items overlap"""
+        return not (
+            item1_end['width'] <= item2_start['width'] + self.EPSILON or
+            item1_start['width'] >= item2_end['width'] - self.EPSILON or
+            item1_end['depth'] <= item2_start['depth'] + self.EPSILON or
+            item1_start['depth'] >= item2_end['depth'] - self.EPSILON or
+            item1_end['height'] <= item2_start['height'] + self.EPSILON or
+            item1_start['height'] >= item2_end['height'] - self.EPSILON
+        )
+
+    def _find_best_position(self, item: ItemDimensions) -> Optional[Position3D]:
+        """Find the best position for an item using a more precise algorithm"""
+        best_pos = None
+        best_score = float('-inf')
+        
+        # Convert dimensions to float for precise calculations
+        item_width = float(item.width)
+        item_depth = float(item.depth)
+        item_height = float(item.height)
+        
+        # Get all existing placements
+        occupied_spaces = []
+        for placement in self.current_placements.values():
+            occupied_spaces.append({
+                'start': placement['startCoordinates'],
+                'end': placement['endCoordinates']
+            })
+        
+        # Create potential positions list
+        potential_positions = [(0, 0, 0)]  # Start with bottom-left-front corner
+        
+        # Add positions next to existing items
+        for space in occupied_spaces:
+            # Add positions on top of items
+            potential_positions.append((
+                space['start']['width'],
+                space['start']['depth'],
+                space['end']['height']
+            ))
+            # Add positions next to items
+            potential_positions.append((
+                space['end']['width'],
+                space['start']['depth'],
+                space['start']['height']
+            ))
+            potential_positions.append((
+                space['start']['width'],
+                space['end']['depth'],
+                space['start']['height']
+            ))
+        
+        # Filter and sort potential positions
+        potential_positions = list(set(potential_positions))  # Remove duplicates
+        potential_positions.sort(key=lambda p: (p[2], p[1], p[0]))  # Sort by height, depth, width
+        
+        for x, y, z in potential_positions:
+            # Skip if position would place item outside container
+            if (x + item_width > self.width + self.EPSILON or
+                y + item_depth > self.depth + self.EPSILON or
+                z + item_height > self.height + self.EPSILON):
+                continue
+                
+            pos = Position3D(x, y, z)
+            
+            # Check if position is valid (no overlaps)
+            valid = True
+            new_item_start = {
+                'width': x, 'depth': y, 'height': z
+            }
+            new_item_end = {
+                'width': x + item_width,
+                'depth': y + item_depth,
+                'height': z + item_height
+            }
+            
+            for space in occupied_spaces:
+                if self._check_overlap(new_item_start, new_item_end,
+                                    space['start'], space['end']):
+                    valid = False
+                    break
+            
+            if valid:
+                # Calculate accessibility score
+                score = self.calculate_accessibility_score(pos, item)
+                if score > best_score:
+                    best_score = score
+                    best_pos = pos
+        
+        return best_pos
+
+    def find_optimal_placement(self, items: List[Dict]) -> Tuple[List[Dict], List[Dict]]:
+        """Optimized placement algorithm with improved coordinate handling"""
+        if not items:
+            return [], []
+
+        # Store all items in items_dict for later reference
+        for item in items:
+            itemId = str(item.get('itemId'))
+            self.items_dict[itemId] = {
+                'width': float(item.get('width', 0)),
+                'depth': float(item.get('depth', 0)),
+                'height': float(item.get('height', 0)),
+                'mass': float(item.get('mass', 0)),
+                'priority': float(item.get('priority', 0)),
+                'itemId': itemId
+            }
+
+        # Sort items by priority and volume
+        sorted_items = sorted(items, 
+                           key=lambda x: (-x.get('priority', 0), 
+                                        -(float(x.get('width', 0)) * 
+                                          float(x.get('depth', 0)) * 
+                                          float(x.get('height', 0)))))
+        
+        placements = []
+        rearrangements = []
+        
+        for item in sorted_items:
+            itemId = str(item.get('itemId'))
+            item_dim = ItemDimensions(
+                width=float(item.get('width', 0)),
+                depth=float(item.get('depth', 0)),
+                height=float(item.get('height', 0)),
+                mass=float(item.get('mass', 0)),
+                priority=float(item.get('priority', 0)),
+                itemId=itemId
+            )
+            
+            # Try different rotations
+            rotations = self.get_90degree_rotations(item_dim)
+            placed = False
+            
+            for rotated_item, rotation in rotations:
+                best_pos = self._find_best_position(rotated_item)
+                if best_pos:
+                    # Validate coordinates
+                    start_coords = {
+                        'width': float(best_pos.x),
+                        'depth': float(best_pos.y),
+                        'height': float(best_pos.z)
+                    }
+                    end_coords = {
+                        'width': float(best_pos.x + rotated_item.width),
+                        'depth': float(best_pos.y + rotated_item.depth),
+                        'height': float(best_pos.z + rotated_item.height)
+                    }
+                    
+                    if self._validate_coordinates(start_coords, end_coords):
+                        # Update current placements with precise coordinates
+                        self.current_placements[itemId] = {
+                            'startCoordinates': start_coords,
+                            'endCoordinates': end_coords
+                        }
+                        
+                        placements.append({
+                            'itemId': itemId,
+                            'position': {
+                                'startCoordinates': start_coords,
+                                'endCoordinates': end_coords
+                            },
+                            'rotation': rotation.value
+                        })
+                        placed = True
+                        break
+            
+            if not placed:
+                print(f"Warning: Could not place item {itemId}")
+        
+        return placements, rearrangements
 
     def calculate_accessibility_score(self, pos: Position3D, item: ItemDimensions) -> float:
         """Optimized accessibility score calculation"""
@@ -595,214 +778,3 @@ class AdvancedCargoPlacement:
                     break
         
         return rearrangements, success
-
-    def find_optimal_placement(self, items: List[Dict]) -> Tuple[List[Dict], List[Dict]]:
-        """Optimized placement algorithm with rearrangement support"""
-        if not items:
-            return [], []
-
-        # Store all items in items_dict for later reference
-        for item in items:
-            itemId = str(item.get('itemId'))  # Ensure itemId is string
-            self.items_dict[itemId] = {
-                'width': item.get('width', 0),
-                'depth': item.get('depth', 0),
-                'height': item.get('height', 0),
-                'mass': item.get('mass', 0),
-                'priority': item.get('priority', 0),
-                'itemId': itemId
-            }
-
-        # Sort items by priority and size for better placement
-        sorted_items = sorted(items, 
-                           key=lambda x: (-x.get('priority', 0), 
-                                        -(x.get('width', 0) * 
-                                          x.get('depth', 0) * 
-                                          x.get('height', 0))))
-        
-        placements = []
-        rearrangements = []
-        
-        # First, try to place all items without rearrangement
-        for item in sorted_items:
-            itemId = str(item.get('itemId'))  # Ensure itemId is string
-            # Create ItemDimensions from input data
-            item_dim = ItemDimensions(
-                width=item.get('width', 0),
-                depth=item.get('depth', 0),
-                height=item.get('height', 0),
-                mass=item.get('mass', 0),
-                priority=item.get('priority', 0),
-                itemId=itemId
-            )
-            
-            # Try different rotations
-            rotations = self.get_90degree_rotations(item_dim)
-            placed = False
-            
-            for rotated_item, rotation in rotations:
-                # Find best position for this rotation
-                best_pos = self._find_best_position(rotated_item)
-                if best_pos and self._can_place_item(best_pos, rotated_item):
-                    # Place the item
-                    self._place_item(best_pos, rotated_item)
-                    self.current_placements[itemId] = best_pos
-                    
-                    placements.append({
-                        'itemId': itemId,
-                        'position': {
-                            'startCoordinates': {
-                                'width': float(best_pos.x),
-                                'depth': float(best_pos.y),
-                                'height': float(best_pos.z)
-                            },
-                            'endCoordinates': {
-                                'width': float(best_pos.x + rotated_item.width),
-                                'depth': float(best_pos.y + rotated_item.depth),
-                                'height': float(best_pos.z + rotated_item.height)
-                            }
-                        },
-                        'rotation': rotation.value
-                    })
-                    placed = True
-                    break
-        
-        # Now try to place any remaining items with rearrangement
-        for item in sorted_items:
-            itemId = str(item.get('itemId'))
-            if itemId in [p['itemId'] for p in placements]:
-                continue
-                
-            item_dim = ItemDimensions(
-                width=item.get('width', 0),
-                depth=item.get('depth', 0),
-                height=item.get('height', 0),
-                mass=item.get('mass', 0),
-                priority=item.get('priority', 0),
-                itemId=itemId
-            )
-            
-            # Try different rotations
-            rotations = self.get_90degree_rotations(item_dim)
-            placed = False
-            
-            for rotated_item, rotation in rotations:
-                # Find best position for this rotation
-                best_pos = self._find_best_position(rotated_item)
-                if best_pos:
-                    # Check if rearrangement is needed
-                    if not self._can_place_item(best_pos, rotated_item):
-                        # Try to rearrange existing items
-                        item_rearrangements, success = self.rearrange_for_new_item(rotated_item)
-                        if success:
-                            rearrangements.extend(item_rearrangements)
-                            # Update the space matrix after rearrangement
-                            for move in item_rearrangements:
-                                if move['type'] == 'final':
-                                    # Clear old position
-                                    old_pos = Position3D(
-                                        move['from']['x'],
-                                        move['from']['y'],
-                                        move['from']['z']
-                                    )
-                                    self.space_matrix.clear(
-                                        old_pos.x, old_pos.y, old_pos.z,
-                                        old_pos.x + int(rotated_item.width),
-                                        old_pos.y + int(rotated_item.depth),
-                                        old_pos.z + int(rotated_item.height)
-                                    )
-                                    # Mark new position
-                                    new_pos = Position3D(
-                                        move['to']['x'],
-                                        move['to']['y'],
-                                        move['to']['z']
-                                    )
-                                    self.space_matrix.occupy(
-                                        new_pos.x, new_pos.y, new_pos.z,
-                                        new_pos.x + int(rotated_item.width),
-                                        new_pos.y + int(rotated_item.depth),
-                                        new_pos.z + int(rotated_item.height)
-                                    )
-                    
-                    # Place the item
-                    self._place_item(best_pos, rotated_item)
-                    self.current_placements[itemId] = best_pos
-                    
-                    placements.append({
-                        'itemId': itemId,
-                        'position': {
-                            'startCoordinates': {
-                                'width': float(best_pos.x),
-                                'depth': float(best_pos.y),
-                                'height': float(best_pos.z)
-                            },
-                            'endCoordinates': {
-                                'width': float(best_pos.x + rotated_item.width),
-                                'depth': float(best_pos.y + rotated_item.depth),
-                                'height': float(best_pos.z + rotated_item.height)
-                            }
-                        },
-                        'rotation': rotation.value
-                    })
-                    placed = True
-                    break
-                
-        return placements, rearrangements
-
-    def _find_best_position(self, item: ItemDimensions) -> Optional[Position3D]:
-        """Optimized position finding with spatial partitioning"""
-        # Use grid-based search
-        grid_size = 10
-        # Convert item dimensions to integers
-        item_width = int(item.width)
-        item_depth = int(item.depth)
-        item_height = int(item.height)
-        
-        # First try to find a position that doesn't require rearrangement
-        for x in range(0, self.width - item_width + 1, grid_size):
-            for y in range(0, self.depth - item_depth + 1, grid_size):
-                for z in range(0, self.height - item_height + 1, grid_size):
-                    pos = Position3D(x, y, z)
-                    if self._can_place_item(pos, item):
-                        return pos
-        
-        # If no direct position found, try to find a position that requires minimal rearrangement
-        best_pos = None
-        min_rearrangement_cost = float('inf')
-        
-        for x in range(0, self.width - item_width + 1, grid_size):
-            for y in range(0, self.depth - item_depth + 1, grid_size):
-                for z in range(0, self.height - item_height + 1, grid_size):
-                    pos = Position3D(x, y, z)
-                    # Check if this position overlaps with any existing items
-                    if self.space_matrix.is_occupied(x, y, z, x + item_width, y + item_depth, z + item_height):
-                        # Calculate rearrangement cost for this position
-                        cost = self._calculate_rearrangement_cost_for_position(pos, item)
-                        if cost < min_rearrangement_cost:
-                            min_rearrangement_cost = cost
-                            best_pos = pos
-        
-        return best_pos
-
-    def _calculate_rearrangement_cost_for_position(self, pos: Position3D, item: ItemDimensions) -> float:
-        """Calculate the cost of rearranging items to make space for a new item at the given position"""
-        total_cost = 0.0
-        item_width = int(item.width)
-        item_depth = int(item.depth)
-        item_height = int(item.height)
-        
-        # Get all occupied regions that overlap with the target position
-        for region in self.space_matrix.get_occupied_regions():
-            x_start, y_start, z_start, x_end, y_end, z_end = region
-            if (pos.x < x_end and pos.x + item_width > x_start and
-                pos.y < y_end and pos.y + item_depth > y_start and
-                pos.z < z_end and pos.z + item_height > z_start):
-                # Calculate cost to move this item
-                old_pos = Position3D(x_start, y_start, z_start)
-                # Find a temporary position
-                temp_pos = self._find_temporary_position(item)
-                if temp_pos:
-                    cost = self._calculate_rearrangement_cost(old_pos, temp_pos, item)
-                    total_cost += cost
-        
-        return total_cost

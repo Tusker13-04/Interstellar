@@ -8,13 +8,14 @@ import re
 
 class Octant:
     """Represents a node (octant) in the Octree."""
-    def __init__(self, x, y, z, width, depth, height, level=0, max_level=3):
+    def __init__(self, x, y, z, width, depth, height, level=0, max_level=4):
         self.x, self.y, self.z = x, y, z
         self.width, self.depth, self.height = width, depth, height
         self.level = level
         self.max_level = max_level
         self.occupied = False
         self.children = None  # If subdivided, this holds 8 sub-octants
+        self.item = None  # Store the item that occupies this space
 
     def subdivide(self):
         """Splits the octant into 8 smaller octants if needed."""
@@ -22,45 +23,66 @@ class Octant:
             return
         half_w, half_d, half_h = self.width / 2, self.depth / 2, self.height / 2
         self.children = [
-            Octant(self.x, self.y, self.z, half_w, half_d, half_h, self.level + 1),
-            Octant(self.x + half_w, self.y, self.z, half_w, half_d, half_h, self.level + 1),
-            Octant(self.x, self.y + half_d, self.z, half_w, half_d, half_h, self.level + 1),
-            Octant(self.x + half_w, self.y + half_d, self.z, half_w, half_d, half_h, self.level + 1),
-            Octant(self.x, self.y, self.z + half_h, half_w, half_d, half_h, self.level + 1),
-            Octant(self.x + half_w, self.y, self.z + half_h, half_w, half_d, half_h, self.level + 1),
-            Octant(self.x, self.y + half_d, self.z + half_h, half_w, half_d, half_h, self.level + 1),
-            Octant(self.x + half_w, self.y + half_d, self.z + half_h, half_w, half_d, half_h, self.level + 1),
+            Octant(self.x, self.y, self.z, half_w, half_d, half_h, self.level + 1, self.max_level),
+            Octant(self.x + half_w, self.y, self.z, half_w, half_d, half_h, self.level + 1, self.max_level),
+            Octant(self.x, self.y + half_d, self.z, half_w, half_d, half_h, self.level + 1, self.max_level),
+            Octant(self.x + half_w, self.y + half_d, self.z, half_w, half_d, half_h, self.level + 1, self.max_level),
+            Octant(self.x, self.y, self.z + half_h, half_w, half_d, half_h, self.level + 1, self.max_level),
+            Octant(self.x + half_w, self.y, self.z + half_h, half_w, half_d, half_h, self.level + 1, self.max_level),
+            Octant(self.x, self.y + half_d, self.z + half_h, half_w, half_d, half_h, self.level + 1, self.max_level),
+            Octant(self.x + half_w, self.y + half_d, self.z + half_h, half_w, half_d, half_h, self.level + 1, self.max_level),
         ]
 
     def is_fitting(self, item_row):
         """Checks if an item can fit into this octant."""
-        return (
-            not self.occupied and 
-            item_row["width"] <= self.width and 
-            item_row["depth"] <= self.depth and 
-            item_row["height"] <= self.height
-        )
+        if self.occupied:
+            return False
+            
+        item_width = float(item_row["width"])
+        item_depth = float(item_row["depth"])
+        item_height = float(item_row["height"])
+        
+        # Check if item dimensions fit within this octant
+        return (item_width <= self.width and 
+                item_depth <= self.depth and 
+                item_height <= self.height)
 
     def place_item(self, item_row):
         """Tries to place an item into the octree."""
+        # If this octant is already occupied, try to subdivide
+        if self.occupied:
+            if not self.children:
+                self.subdivide()
+            if self.children:
+                for child in self.children:
+                    result = child.place_item(item_row)
+                    if result is not None:
+                        return result
+            return None
+
+        # Check if item fits in this octant
         if self.is_fitting(item_row):
+            # Place the item here
             self.occupied = True
+            self.item = item_row
             return pl.DataFrame({
                 "start_x": [self.x], "start_y": [self.y], "start_z": [self.z],
-                "end_x": [self.x + item_row["width"]],
-                "end_y": [self.y + item_row["depth"]],
-                "end_z": [self.z + item_row["height"]]
+                "end_x": [self.x + float(item_row["width"])],
+                "end_y": [self.y + float(item_row["depth"])],
+                "end_z": [self.z + float(item_row["height"])]
             })
 
-        if not self.children:
-            self.subdivide()
+        # If item doesn't fit and we haven't reached max level, try to subdivide
+        if self.level < self.max_level:
+            if not self.children:
+                self.subdivide()
+            if self.children:
+                for child in self.children:
+                    result = child.place_item(item_row)
+                    if result is not None:
+                        return result
 
-        for child in self.children:
-            result = child.place_item(item_row)
-            if result is not None:
-                return result
-
-        return None  # No space found
+        return None
 
 class Object3D:
     def __init__(self, itemId, name, containerId, start, end):
@@ -75,7 +97,11 @@ class Octree:
     """Octree structure for managing storage placement."""
     def __init__(self, container_row):
         self.root = Octant(
-            0, 0, 0, container_row["width"], container_row["depth"], container_row["height"]
+            0, 0, 0, 
+            float(container_row["width"]), 
+            float(container_row["depth"]), 
+            float(container_row["height"]),
+            max_level=5  # Increased max level for finer granularity
         )
 
     def place_item(self, item_row):
@@ -365,98 +391,167 @@ class CargoPlacementSystem:
             self.loading_log.append(traceback.format_exc())
 
     def optimize_placement(self):
-        """Places items using Octree, now indexed by zone."""
-        print("\n=== Starting Optimization Process ===")
-        
-        print(f"Items DataFrame Shape: {self.items_df.shape if not self.items_df.is_empty() else 'Empty'}")
-        print(f"Containers DataFrame Shape: {self.containers_df.shape if not self.containers_df.is_empty() else 'Empty'}")
-        print(f"Number of Octrees: {len(self.octrees)}")
-        
+        """Fast bin-packing algorithm for item placement with size matching."""
         if self.items_df.is_empty() or self.containers_df.is_empty():
-            print("Error: No items or containers available.")
-            return pl.DataFrame({"success": [False], "placements": [None], "rearrangements": [None]})
+            return pl.DataFrame()
 
-        required_item_cols = ["itemId", "width", "depth", "height", "priority", "preferredZone"]
-        missing_cols = [col for col in required_item_cols if col not in self.items_df.columns]
-        if missing_cols:
-            print(f"Error: Missing required columns in items_df: {missing_cols}")
-            return pl.DataFrame({"success": [False], "placements": [None], "rearrangements": [None]})
-
-        default_placements = {
-            "itemId": [],
-            "zone": [],
-            "start_x": [],
-            "start_y": [],
-            "start_z": [],
-            "end_x": [],
-            "end_y": [],
-            "end_z": []
-        }
-        placements_df = pl.DataFrame(default_placements)
-
-        print("\n=== Processing Items ===")
-        sorted_items_df = self.items_df.sort("priority", descending=True)
-        print(f"Total items to process: {len(sorted_items_df)}")
-
-        for item_row in sorted_items_df.iter_rows(named=True):
-            print(f"\nProcessing item ID: {item_row['itemId']}")
+        # Group containers by zone and sort by volume
+        containers_by_zone = {}
+        for container_row in self.containers_df.iter_rows(named=True):
+            zone = container_row["zone"]
+            if zone not in containers_by_zone:
+                containers_by_zone[zone] = []
             
-            try:
-                preferred_zone = str(item_row["preferredZone"]).strip()
-                print(f"Preferred zone: {preferred_zone}")
-                
-                print(f"Available zones: {list(self.octrees.keys())}")
-                
-                self.octrees = {str(zone).strip(): octree for zone, octree in self.octrees.items()}
-                
-                octree = self.octrees.get(preferred_zone)
-                if octree is None:
-                    print(f"Warning: No octree found for zone '{preferred_zone}'")
-                    continue
-
-                if not all(item_row[dim] > 0 for dim in ['width', 'depth', 'height']):
-                    print(f"Warning: Invalid dimensions for item {item_row['itemId']}")
-                    continue
-
-                print("Attempting placement...")
-                placement_position = octree.place_item(item_row)
-                print(f"Placement result: {'Success' if placement_position is not None else 'Failed'}")
-
-                if placement_position is not None:
-                    placement_record = pl.DataFrame({
-                        "itemId": [item_row["itemId"]],
-                        "zone": [preferred_zone],
-                    }).hstack(placement_position)
-
-                    placements_df = placements_df.vstack(placement_record) if not placements_df.is_empty() else placement_record
-                    print(f"Successfully placed item {item_row['itemId']} in zone {preferred_zone}")
-                else:
-                    print(f"Failed to place item {item_row['itemId']} in zone {preferred_zone}")
-
-            except Exception as e:
-                print(f"Error processing item {item_row['itemId']}: {str(e)}")
+            # Calculate container volume
+            width = float(container_row["width"])
+            depth = float(container_row["depth"])
+            height = float(container_row["height"])
+            volume = width * depth * height
+            
+            containers_by_zone[zone].append({
+                "container_id": container_row["containerId"],
+                "width": width,
+                "depth": depth,
+                "height": height,
+                "volume": volume,
+                "row": container_row
+            })
+        
+        # Sort containers by volume within each zone (smallest to largest)
+        for zone in containers_by_zone:
+            containers_by_zone[zone].sort(key=lambda c: c["volume"])
+        
+        # Calculate item volumes and sort by priority (highest first)
+        items_with_volume = self.items_df.with_columns(
+            (pl.col("width") * pl.col("depth") * pl.col("height")).alias("volume")
+        ).sort(
+            by=["priority"],
+            descending=[True]
+        )
+        
+        # Track container usage and occupied spaces
+        container_usage = {}
+        for container_row in self.containers_df.iter_rows(named=True):
+            container_id = container_row["containerId"]
+            container_usage[container_id] = {
+                "width": float(container_row["width"]),
+                "depth": float(container_row["depth"]),
+                "height": float(container_row["height"]),
+                "occupied_spaces": []  # List of (start_x, start_y, start_z, end_x, end_y, end_z)
+            }
+        
+        # Create a DataFrame to store all placements
+        placements_data = []
+        unplaced_items = []
+        
+        # Process items
+        for item_row in items_with_volume.iter_rows(named=True):
+            preferred_zone = str(item_row["preferredZone"]).strip()
+            
+            # Skip if no containers in preferred zone
+            if preferred_zone not in containers_by_zone:
+                unplaced_items.append({
+                    "itemId": item_row["itemId"],
+                    "name": item_row.get("name", "Unknown"),
+                    "reason": f"No containers in zone {preferred_zone}"
+                })
                 continue
-
-        print("\n=== Finalizing Results ===")
-        print(f"Total successful placements: {len(placements_df)}")
+                
+            item_width = float(item_row["width"])
+            item_depth = float(item_row["depth"])
+            item_height = float(item_row["height"])
+            item_volume = item_width * item_depth * item_height
+            
+            # Calculate average container volume in this zone
+            zone_containers = containers_by_zone[preferred_zone]
+            avg_zone_volume = sum(c["volume"] for c in zone_containers) / len(zone_containers)
+            
+            # Determine if this is a small or large item relative to zone average
+            is_small_item = item_volume < avg_zone_volume
+            
+            # Try to place in containers of the preferred zone
+            placed = False
+            
+            # For small items, try smallest containers first
+            # For large items, try largest containers first
+            container_order = zone_containers if is_small_item else list(reversed(zone_containers))
+            
+            for container_info in container_order:
+                container_id = container_info["container_id"]
+                usage = container_usage[container_id]
+                
+                # Try to find a valid position in this container
+                for start_x in range(0, int(usage["width"] - item_width) + 1):
+                    for start_y in range(0, int(usage["depth"] - item_depth) + 1):
+                        for start_z in range(0, int(usage["height"] - item_height) + 1):
+                            # Calculate end coordinates
+                            end_x = start_x + item_width
+                            end_y = start_y + item_depth
+                            end_z = start_z + item_height
+                            
+                            # Check if this position overlaps with any existing items
+                            position_valid = True
+                            for space in usage["occupied_spaces"]:
+                                # Check for overlap in all dimensions
+                                if not (end_x <= space[0] or start_x >= space[3] or
+                                       end_y <= space[1] or start_y >= space[4] or
+                                       end_z <= space[2] or start_z >= space[5]):
+                                    position_valid = False
+                                    break
+                            
+                            if position_valid:
+                                # Place the item here
+                                usage["occupied_spaces"].append((start_x, start_y, start_z, end_x, end_y, end_z))
+                                
+                                # Create placement record
+                                placement_record = {
+                                    "itemId": item_row["itemId"],
+                                    "zone": preferred_zone,
+                                    "containerId": container_id,
+                                    "coordinates": f"({start_x},{start_y},{start_z}),({end_x},{end_y},{end_z})"
+                                }
+                                placements_data.append(placement_record)
+                                placed = True
+                                break
+                            
+                        if placed:
+                            break
+                    if placed:
+                        break
+                if placed:
+                    break
+            
+            # If item couldn't be placed, mark as unplaced
+            if not placed:
+                unplaced_items.append({
+                    "itemId": item_row["itemId"],
+                    "name": item_row.get("name", "Unknown"),
+                    "dimensions": f"{item_width}x{item_depth}x{item_height}",
+                    "preferredZone": preferred_zone,
+                    "reason": "No suitable container in preferred zone"
+                })
         
-        default_rearrangements = {
-            "step": [],
-            "action": [],
-            "itemId": [],
-            "from_container": [],
-            "to_container": []
-        }
-        rearrangements_df = pl.DataFrame(default_rearrangements)
-
-        result = pl.DataFrame({
-            "success": [True],
-            "placements": [placements_df],
-            "rearrangements": [rearrangements_df]
-        })
+        # Create placements DataFrame
+        placements_df = pl.DataFrame(placements_data)
         
-        print("=== Optimization Complete ===\n")
-        return result
+        # Save placements to CSV
+        if not placements_df.is_empty():
+            try:
+                if os.path.exists("cargo_arrangement.csv") and os.path.getsize("cargo_arrangement.csv") > 0:
+                    existing_df = pl.read_csv("cargo_arrangement.csv")
+                    combined_df = pl.concat([existing_df, placements_df], how="vertical")
+                    combined_df.write_csv("cargo_arrangement.csv")
+                else:
+                    placements_df.write_csv("cargo_arrangement.csv")
+            except Exception as e:
+                print(f"Error saving to cargo_arrangement.csv: {str(e)}")
+        
+        print(f"\nPlacement Summary:")
+        print(f"Total items processed: {len(items_with_volume)}")
+        print(f"Successfully placed: {len(placements_data)}")
+        print(f"Failed to place: {len(unplaced_items)}")
+        
+        return placements_df
 
 class CargoClassificationSystem:
     def __init__(self):
