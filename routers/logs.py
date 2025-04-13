@@ -82,6 +82,48 @@ def log_action(action_type: str, details: dict = None, user_id: str = "", itemId
     # Save to CSV
     logs_df.write_csv(LOG_FILE)
 
+def convert_timestamp(timestamp):
+    """Convert various timestamp formats to a consistent +00:00 format."""
+    if not timestamp:
+        return timestamp
+        
+    try:
+        # Remove any existing timezone info first
+        if 'Z' in timestamp:
+            timestamp = timestamp.replace('Z', '')
+        elif '+' in timestamp:
+            timestamp = timestamp.split('+')[0]
+            
+        # Handle the format like "12-03-2025T:00:00:00" or "12-03-2025T00:00:00"
+        if 'T:' in timestamp:
+            timestamp = timestamp.replace('T:', 'T')
+            
+        # Convert DD-MM-YYYY to YYYY-MM-DD if in that format
+        if re.match(r'^\d{2}-\d{2}-\d{4}T', timestamp):
+            date_part = timestamp.split('T')[0]
+            time_part = timestamp.split('T')[1]
+            day, month, year = date_part.split('-')
+            timestamp = f"{year}-{month}-{day}T{time_part}"
+            
+        # Add timezone if not present
+        if not any(x in timestamp for x in ['+', '-', 'Z']):
+            timestamp = timestamp + '+00:00'
+            
+        return timestamp
+    except Exception as e:
+        raise ValueError(f"Invalid timestamp format: {timestamp}")
+
+def parse_datetime(timestamp_str):
+    """Parse datetime from various formats."""
+    if not timestamp_str:
+        return None
+        
+    timestamp_str = convert_timestamp(timestamp_str)
+    try:
+        return datetime.fromisoformat(timestamp_str)
+    except ValueError as e:
+        raise ValueError(f"Could not parse datetime from {timestamp_str}: {str(e)}")
+
 @router.get("/logs")
 async def get_logs(
     startDate: Optional[str] = Query(None, description="Start date in ISO format"),
@@ -101,21 +143,35 @@ async def get_logs(
         # Print column names for debugging
         print(f"Columns in logs_df: {logs_df.columns}")
 
-        # Convert timestamps to datetime objects
+        # Convert timestamps to datetime objects with UTC timezone
         logs_df = logs_df.with_columns(
-            pl.col("timestamp").str.strptime(pl.Datetime, format="%Y-%m-%dT%H:%M:%S%.f%z")
+            pl.col("timestamp").str.strptime(pl.Datetime, format="%Y-%m-%dT%H:%M:%S%.f%z").cast(pl.Datetime("us", "UTC"))
         )
 
-        # Convert date filters from "Z" to "+00:00" format if needed
+        # Parse date filters
         if startDate:
-            startDate = convert_timestamp(startDate)
-            start_dt = datetime.fromisoformat(startDate)
-            logs_df = logs_df.filter(pl.col("timestamp") >= start_dt)
+            try:
+                start_dt = parse_datetime(startDate)
+                # Convert to UTC aware datetime for comparison
+                if start_dt.tzinfo is None:
+                    start_dt = start_dt.replace(tzinfo=timezone.utc)
+                else:
+                    start_dt = start_dt.astimezone(timezone.utc)
+                logs_df = logs_df.filter(pl.col("timestamp") >= pl.lit(start_dt).cast(pl.Datetime("us", "UTC")))
+            except ValueError as e:
+                raise HTTPException(status_code=400, detail=f"Invalid start date format: {str(e)}")
 
         if endDate:
-            endDate = convert_timestamp(endDate)
-            end_dt = datetime.fromisoformat(endDate)
-            logs_df = logs_df.filter(pl.col("timestamp") <= end_dt)
+            try:
+                end_dt = parse_datetime(endDate)
+                # Convert to UTC aware datetime for comparison
+                if end_dt.tzinfo is None:
+                    end_dt = end_dt.replace(tzinfo=timezone.utc)
+                else:
+                    end_dt = end_dt.astimezone(timezone.utc)
+                logs_df = logs_df.filter(pl.col("timestamp") <= pl.lit(end_dt).cast(pl.Datetime("us", "UTC")))
+            except ValueError as e:
+                raise HTTPException(status_code=400, detail=f"Invalid end date format: {str(e)}")
 
         if itemId is not None:
             logs_df = logs_df.filter(pl.col("itemId") == itemId)
@@ -185,12 +241,6 @@ async def clear_logs():
     except Exception as e:
         print(f"Error clearing logs and files: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-
-def convert_timestamp(timestamp):
-    """Convert timestamps in Z format to +00:00 format."""
-    if timestamp and timestamp.endswith('Z'):
-        return timestamp.replace('Z', '+00:00')
-    return timestamp
 
 @router.post("/logs")
 async def add_log_entry(
