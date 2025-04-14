@@ -8,7 +8,7 @@ function CargoTracking() {
         <SideNavBar />
       </div>
 
-      <div className="flex-1 ml-64 p-4 bg-gray-900">
+      <div className="flex-1 ml-64 p-4">
         <CargoManager />
       </div>
     </div>

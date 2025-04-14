@@ -13,7 +13,7 @@ function SideNavBar() {
   }, [location.pathname]);
 
   return (
-    <div className="w-64 p-6 py-10 h-full border-r border-gray-800 bg-black/80 backdrop-blur-xl shadow-lg">
+    <div className="w-64 p-6 py-10 h-full border-r border-gray-900 bg-black/90 backdrop-blur-xl shadow-lg">
       <div className="flex justify-center">
         <Link to="/home">
           <div
