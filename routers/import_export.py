@@ -454,3 +454,24 @@ async def export_arrangement():
         print(traceback.format_exc())
         log_action("Export Failed", f"Error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/items/names")
+async def get_item_names():
+    try:
+        # Read the imported_items.csv file
+        if not os.path.exists("imported_items.csv"):
+            return {"success": False, "error": "No items have been imported"}
+        
+        items_df = pl.read_csv("imported_items.csv")
+        if items_df.is_empty():
+            return {"success": False, "error": "No items found in the imported file"}
+        
+        # Extract item IDs and names
+        items_list = items_df.select(["itemId", "name"]).to_dicts()
+        
+        return {
+            "success": True,
+            "items": items_list
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}

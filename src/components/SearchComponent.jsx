@@ -16,7 +16,10 @@ const SearchComponent = () => {
     const { name, value } = e.target;
     setSearchParams(prev => ({
       ...prev,
-      [name]: value
+      [name]: value,
+      // Clear the other field when one is being used
+      ...(name === 'itemId' && value !== '' ? { itemName: '' } : {}),
+      ...(name === 'itemName' && value !== '' ? { itemId: '' } : {})
     }));
   };
 
@@ -104,7 +107,10 @@ const SearchComponent = () => {
         value={searchParams.itemId}
         onChange={handleInputChange}
         placeholder="Enter Item ID"
-        className="mt-1 p-2 w-full bg-gray-700 border border-gray-600 rounded-md text-white"
+        className={`mt-1 p-2 w-full bg-gray-700 border border-gray-600 rounded-md text-white ${
+          searchParams.itemName ? 'opacity-50 cursor-not-allowed' : ''
+        }`}
+        disabled={searchParams.itemName !== ''}
       />
     </div>
 
@@ -118,10 +124,13 @@ const SearchComponent = () => {
         value={searchParams.itemName}
         onChange={handleInputChange}
         placeholder="Enter Item Name"
-        className="mt-1 p-2 w-full bg-gray-700 border border-gray-600 rounded-md text-white"
+        className={`mt-1 p-2 w-full bg-gray-700 border border-gray-600 rounded-md text-white ${
+          searchParams.itemId ? 'opacity-50 cursor-not-allowed' : ''
+        }`}
+        disabled={searchParams.itemId !== ''}
       />
       <p className="text-xs text-gray-400 mt-1">
-        Provide either Item ID or Item Name
+        Enter either Item ID or Item Name, not both
       </p>
     </div>
 

@@ -170,16 +170,16 @@ const PlacementComponent = () => {
                             <table className="min-w-full table-auto border-collapse">
                                 <thead>
                                     <tr className="bg-gray-50">
-                                        <th className="px-4 py-2 border">Item ID</th>
-                                        <th className="px-4 py-2 border">Container</th>
-                                        <th className="px-4 py-2 border">Position</th>
-                                        <th className="px-4 py-2 border">Dimensions</th>
-                                        <th className="px-4 py-2 border">Rotation</th>
+                                        <th className="px-4 py-2 border text-gray-900">Item ID</th>
+                                        <th className="px-4 py-2 border text-gray-900">Container</th>
+                                        <th className="px-4 py-2 border text-gray-900">Position</th>
+                                        <th className="px-4 py-2 border text-gray-900">Dimensions</th>
+                                        <th className="px-4 py-2 border text-gray-900">Rotation</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {placementData.placements.map((placement, index) => (
-                                        <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                        <tr key={index} className={index % 2 === 0 ? 'bg-white text-gray-900' : 'bg-gray-50 text-gray-900'}>
                                             <td className="px-4 py-2 border">{placement.itemId}</td>
                                             <td className="px-4 py-2 border">{placement.containerId}</td>
                                             <td className="px-4 py-2 border">

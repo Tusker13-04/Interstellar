@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Box, Text } from '@react-three/drei';
 import { getContainerItems } from '../../services/apiService';
@@ -10,6 +10,15 @@ const CargoContainer3D = () => {
   const [containerDimensions, setContainerDimensions] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showTable, setShowTable] = useState(false);
+  const tableRef = useRef(null);
+
+  const scrollToTable = () => {
+    setShowTable(true);
+    setTimeout(() => {
+      tableRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -17,7 +26,7 @@ const CargoContainer3D = () => {
         setLoading(true);
         setError(null);
         const response = await getContainerItems();
-        
+
         if (response && response.data && response.data.success) {
           const { containers, items, dimensions } = response.data;
           
@@ -127,19 +136,32 @@ const CargoContainer3D = () => {
 
   return (
     <div className="p-4">
-      <div className="mb-4">
-        <label className="block text-sm font-medium mb-2">Select Container</label>
-        <select
-          value={selectedContainer}
-          onChange={(e) => setSelectedContainer(e.target.value)}
-          className="w-full p-2 border rounded"
-        >
-          {containers.map(containerId => (
-            <option key={containerId} value={containerId}>
-              Container {containerId}
-            </option>
-          ))}
-        </select>
+      <div className="mb-4 flex justify-between items-center">
+        <div>
+          <label className="block text-sm font-medium mb-2">Select Container</label>
+          <select
+            value={selectedContainer}
+            onChange={(e) => {
+              setSelectedContainer(e.target.value);
+              setShowTable(false);
+            }}
+            className="w-full p-2 border rounded"
+          >
+            {containers.map(containerId => (
+              <option key={containerId} value={containerId}>
+                Container {containerId}
+              </option>
+            ))}
+          </select>
+        </div>
+        {containerItems.length > 0 && (
+          <button
+            onClick={scrollToTable}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+          >
+            View Items List
+          </button>
+        )}
       </div>
 
       <div className="mb-4">
@@ -154,7 +176,8 @@ const CargoContainer3D = () => {
         </p>
       </div>
 
-      <div style={{ width: '100%', height: '600px', border: '1px solid #ccc', borderRadius: '4px', overflow: 'hidden' }}>
+      {/* 3D Visualization Container */}
+      <div style={{ width: '100%', height: '600px', border: '1px solid #ccc', borderRadius: '4px', overflow: 'hidden', marginBottom: '2rem' }}>
         <Canvas camera={{ position: [cameraDistance, cameraDistance, cameraDistance], fov: 50 }}>
           <ambientLight intensity={0.5} />
           <pointLight position={[cameraDistance, cameraDistance, cameraDistance]} />
@@ -217,25 +240,30 @@ const CargoContainer3D = () => {
         </Canvas>
       </div>
 
-      {/* Item legend */}
-      {containerItems.length > 0 && (
-        <div className="mt-4">
-          <h3 className="text-sm font-medium mb-2">Items in Container:</h3>
-          <div className="max-h-[200px] overflow-y-auto border rounded p-2">
-            <table className="min-w-full text-sm text-white">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="px-2 py-1 text-left text-white">Item ID</th>
-                  <th className="px-2 py-1 text-left text-white">Name</th>
-                  <th className="px-2 py-1 text-left text-white">Dimensions (W×D×H)</th>
+      {/* Item Table Section - Separate from visualization */}
+      {containerItems.length > 0 && showTable && (
+        <div className="border-t pt-8 mt-8" ref={tableRef}>
+          <div className="max-h-[400px] overflow-y-auto border rounded">
+            <table className="min-w-full text-sm">
+              <thead className="sticky top-0">
+                <tr className="bg-gray-800">
+                  <th className="px-4 py-2 text-left text-white font-semibold">Item ID</th>
+                  <th className="px-4 py-2 text-left text-white font-semibold">Start Position (W,D,H)</th>
+                  <th className="px-4 py-2 text-left text-white font-semibold">End Position (W,D,H)</th>
+                  <th className="px-4 py-2 text-left text-white font-semibold">Dimensions (W×D×H)</th>
                 </tr>
               </thead>
               <tbody>
                 {containerItems.map((item, index) => (
-                  <tr key={`legend-${item.item_id}-${index}`} className="border-t border-gray-200">
-                    <td className="px-2 py-1 text-white">{item.item_id}</td>
-                    <td className="px-2 py-1 text-white">{item.name}</td>
-                    <td className="px-2 py-1 text-white">
+                  <tr key={`legend-${item.item_id}-${index}`} className="border-t border-gray-200 bg-gray-700 hover:bg-gray-600">
+                    <td className="px-4 py-2 text-white">{item.item_id}</td>
+                    <td className="px-4 py-2 text-white">
+                      ({item.start_width_cm}, {item.start_depth_cm}, {item.start_height_cm})
+                    </td>
+                    <td className="px-4 py-2 text-white">
+                      ({item.end_width_cm}, {item.end_depth_cm}, {item.end_height_cm})
+                    </td>
+                    <td className="px-4 py-2 text-white">
                       {Math.round(item.end_width_cm - item.start_width_cm)}cm × 
                       {Math.round(item.end_depth_cm - item.start_depth_cm)}cm × 
                       {Math.round(item.end_height_cm - item.start_height_cm)}cm
@@ -251,4 +279,4 @@ const CargoContainer3D = () => {
   );
 };
 
-export default CargoContainer3D;
+export default CargoContainer3D; 
