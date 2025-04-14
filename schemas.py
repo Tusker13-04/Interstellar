@@ -391,11 +391,11 @@ class CargoPlacementSystem:
             self.loading_log.append(traceback.format_exc())
 
     def optimize_placement(self):
-        """Fast bin-packing algorithm for item placement with size matching."""
+        """Optimized bin-packing algorithm for item placement with strict overlap prevention."""
         if self.items_df.is_empty() or self.containers_df.is_empty():
             return pl.DataFrame()
 
-        # Group containers by zone and sort by volume
+        # Group containers by zone
         containers_by_zone = {}
         for container_row in self.containers_df.iter_rows(named=True):
             zone = container_row["zone"]
@@ -418,28 +418,103 @@ class CargoPlacementSystem:
                 "occupied_spaces": [],  # List of (start_x, start_y, start_z, end_x, end_y, end_z)
                 "row": container_row
             })
-        
-        # Sort containers by volume within each zone (smallest to largest)
+
+        # Sort containers by volume within each zone
         for zone in containers_by_zone:
             containers_by_zone[zone].sort(key=lambda c: c["volume"])
-        
-        # Calculate item volumes and sort by priority (highest first) and volume (largest first)
+
+        # Calculate item volumes and sort by priority and volume
         items_with_volume = self.items_df.with_columns(
             (pl.col("width") * pl.col("depth") * pl.col("height")).alias("volume")
         ).sort(
             by=["priority", "volume"],
             descending=[True, True]
         )
-        
-        # Track placements and unplaced items
+
         placements_data = []
         unplaced_items = []
-        
+
+        def check_overlap(x, y, z, w, d, h, container):
+            """Helper function to check if a position overlaps with any existing items"""
+            # Add small epsilon for floating point comparison
+            epsilon = 0.001
+            
+            # First check container boundaries
+            if x < 0 or y < 0 or z < 0 or \
+               x + w > container["width"] + epsilon or \
+               y + d > container["depth"] + epsilon or \
+               z + h > container["height"] + epsilon:
+                return True
+
+            # Then check overlap with other items
+            for space in container["occupied_spaces"]:
+                # If any dimension overlaps, the boxes intersect
+                if not (x + epsilon >= space[3] or  # New item is to the right
+                    space[0] + epsilon >= x + w or  # New item is to the left
+                    y + epsilon >= space[4] or      # New item is in front
+                    space[1] + epsilon >= y + d or  # New item is behind
+                    z + epsilon >= space[5] or      # New item is above
+                    space[2] + epsilon >= z + h):   # New item is below
+                    return True
+            return False
+
+        def find_valid_position(container, width, depth, height):
+            """Helper function to find a valid position for an item"""
+            best_pos = None
+            min_waste = float('inf')
+            
+            # Try positions with smaller increments for better space utilization
+            increment = 0.1  # 1mm increment for more precise placement
+            
+            max_x = int((container["width"] - width) / increment)
+            max_y = int((container["depth"] - depth) / increment)
+            max_z = int((container["height"] - height) / increment)
+            
+            for z in range(0, max_z + 1):
+                z_pos = z * increment
+                for y in range(0, max_y + 1):
+                    y_pos = y * increment
+                    for x in range(0, max_x + 1):
+                        x_pos = x * increment
+                        
+                        if not check_overlap(x_pos, y_pos, z_pos, width, depth, height, container):
+                            # Calculate waste score
+                            waste = 0
+                            
+                            # Prefer positions closer to the ground and walls
+                            waste += z_pos * 3  # Height penalty
+                            waste += min(x_pos, container["width"] - (x_pos + width))  # Distance from walls
+                            waste += min(y_pos, container["depth"] - (y_pos + depth))
+                            
+                            # Prefer positions next to other items
+                            min_dist_to_items = float('inf')
+                            if container["occupied_spaces"]:
+                                for space in container["occupied_spaces"]:
+                                    dist = min(
+                                        abs(x_pos - space[3]),
+                                        abs(x_pos + width - space[0]),
+                                        abs(y_pos - space[4]),
+                                        abs(y_pos + depth - space[1]),
+                                        abs(z_pos - space[5]),
+                                        abs(z_pos + height - space[2])
+                                    )
+                                    min_dist_to_items = min(min_dist_to_items, dist)
+                                waste += min_dist_to_items
+                            
+                            if waste < min_waste:
+                                min_waste = waste
+                                best_pos = (x_pos, y_pos, z_pos)
+                                
+                            # If we found a position with very little waste, use it
+                            if waste < 1.0:
+                                return best_pos
+            
+            return best_pos
+
         # Process items
         for item_row in items_with_volume.iter_rows(named=True):
             preferred_zone = str(item_row["preferredZone"]).strip()
             
-            # Skip if no containers in preferred zone
             if preferred_zone not in containers_by_zone:
                 unplaced_items.append({
                     "itemId": item_row["itemId"],
@@ -447,104 +522,78 @@ class CargoPlacementSystem:
                     "reason": f"No containers in zone {preferred_zone}"
                 })
                 continue
-                
+            
             item_width = float(item_row["width"])
             item_depth = float(item_row["depth"])
             item_height = float(item_row["height"])
             item_volume = item_width * item_depth * item_height
             
-            # Calculate average container volume in this zone
+            # Get containers in preferred zone
             zone_containers = containers_by_zone[preferred_zone]
-            avg_zone_volume = sum(c["volume"] for c in zone_containers) / len(zone_containers)
             
-            # Determine if this is a small or large item relative to zone average
-            is_small_item = item_volume < (avg_zone_volume * 0.3)  # 30% threshold
+            # Find suitable containers
+            suitable_containers = []
+            for container in zone_containers:
+                # Check if container can fit the item
+                if (item_width <= container["width"] and 
+                    item_depth <= container["depth"] and 
+                    item_height <= container["height"]):
+                    suitable_containers.append(container)
             
-            # Try to place in containers of the preferred zone
+            if not suitable_containers:
+                unplaced_items.append({
+                    "itemId": item_row["itemId"],
+                    "name": item_row.get("name", "Unknown"),
+                    "dimensions": f"{item_width}x{item_depth}x{item_height}",
+                    "preferredZone": preferred_zone,
+                    "reason": "No container in preferred zone can fit this item"
+                })
+                continue
+            
+            # Sort suitable containers by volume
+            avg_container_volume = sum(c["volume"] for c in suitable_containers) / len(suitable_containers)
+            is_small_item = item_volume < (avg_container_volume * 0.3)
+            suitable_containers.sort(key=lambda c: c["volume"], reverse=not is_small_item)
+            
+            # Try to place the item
             placed = False
-            
-            # For small items, try smallest containers first
-            # For large items, try largest containers first
-            container_order = zone_containers if is_small_item else list(reversed(zone_containers))
-            
-            for container in container_order:
-                # Skip if container is too small for the item
-                if (item_width > container["width"] or 
-                    item_depth > container["depth"] or 
-                    item_height > container["height"]):
+            for container in suitable_containers:
+                if container["used_volume"] / container["volume"] > 0.85:
                     continue
                 
-                # Skip if container is too full (>85% capacity)
-                container_volume = container["volume"]
-                if container["used_volume"] / container_volume > 0.85:
-                    continue
+                # Try different orientations
+                orientations = [
+                    (item_width, item_depth, item_height),
+                    (item_depth, item_width, item_height),
+                    (item_width, item_height, item_depth),
+                    (item_height, item_width, item_depth),
+                    (item_depth, item_height, item_width),
+                    (item_height, item_depth, item_width)
+                ]
                 
-                # Try to find optimal position
-                best_pos = None
-                min_waste = float('inf')
-                
-                # Try different rotations (if item dimensions allow)
-                rotations = [(item_width, item_depth, item_height)]
-                if item_width != item_depth:  # Only add rotations if dimensions differ
-                    rotations.append((item_depth, item_width, item_height))
-                if item_height != item_width:
-                    rotations.append((item_height, item_depth, item_width))
-                if item_height != item_depth:
-                    rotations.append((item_width, item_height, item_depth))
-                
-                for rot_width, rot_depth, rot_height in rotations:
-                    # Skip invalid rotations
-                    if (rot_width > container["width"] or 
-                        rot_depth > container["depth"] or 
-                        rot_height > container["height"]):
+                for w, d, h in orientations:
+                    if w > container["width"] or d > container["depth"] or h > container["height"]:
                         continue
-                    
-                    # Try different positions
-                    for x in range(0, int(container["width"] - rot_width + 1), 1):
-                        for y in range(0, int(container["depth"] - rot_depth + 1), 1):
-                            for z in range(0, int(container["height"] - rot_height + 1), 1):
-                                # Check for overlap with existing items
-                                overlaps = False
-                                for space in container["occupied_spaces"]:
-                                    if (x < space[3] and x + rot_width > space[0] and
-                                        y < space[4] and y + rot_depth > space[1] and
-                                        z < space[5] and z + rot_height > space[2]):
-                                        overlaps = True
-                                        break
-                                
-                                if not overlaps:
-                                    # Calculate wasted space (distance from other items and walls)
-                                    waste = 0
-                                    for space in container["occupied_spaces"]:
-                                        dx = min(abs(x - space[3]), abs(x + rot_width - space[0]))
-                                        dy = min(abs(y - space[4]), abs(y + rot_depth - space[1]))
-                                        dz = min(abs(z - space[5]), abs(z + rot_height - space[2]))
-                                        waste += dx + dy + dz
-                                    
-                                    # Add waste for distance from walls
-                                    waste += min(x, container["width"] - (x + rot_width))
-                                    waste += min(y, container["depth"] - (y + rot_depth))
-                                    waste += min(z, container["height"] - (z + rot_height))
-                                    
-                                    if waste < min_waste:
-                                        min_waste = waste
-                                        best_pos = (x, y, z, rot_width, rot_depth, rot_height)
+                        
+                    position = find_valid_position(container, w, d, h)
+                    if position:
+                        x, y, z = position
+                        # Update container state
+                        container["occupied_spaces"].append((x, y, z, x + w, y + d, z + h))
+                        container["used_volume"] += w * d * h
+                        
+                        # Create placement record
+                        placement_record = {
+                            "itemId": item_row["itemId"],
+                            "zone": preferred_zone,
+                            "containerId": container["container_id"],
+                            "coordinates": f"({x:.1f},{y:.1f},{z:.1f}),({(x+w):.1f},{(y+d):.1f},{(z+h):.1f})"
+                        }
+                        placements_data.append(placement_record)
+                        placed = True
+                        break
                 
-                if best_pos:
-                    x, y, z, w, d, h = best_pos
-                    # Update container state
-                    container["occupied_spaces"].append((x, y, z, x + w, y + d, z + h))
-                    container["used_volume"] += w * d * h
-                    
-                    # Create placement record with precise coordinates
-                    placement_record = {
-                        "itemId": item_row["itemId"],
-                        "zone": preferred_zone,
-                        "containerId": container["container_id"],
-                        "coordinates": f"({x:.1f},{y:.1f},{z:.1f}),({(x+w):.1f},{(y+d):.1f},{(z+h):.1f})"
-                    }
-                    placements_data.append(placement_record)
-                    placed = True
+                if placed:
                     break
             
             if not placed:
@@ -555,7 +604,7 @@ class CargoPlacementSystem:
                     "preferredZone": preferred_zone,
                     "reason": "No suitable space found in preferred zone containers"
                 })
-        
+
         # Create placements DataFrame
         placements_df = pl.DataFrame(placements_data)
         
