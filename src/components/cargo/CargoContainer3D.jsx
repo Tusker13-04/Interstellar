@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Box, Text, Html, PerspectiveCamera } from '@react-three/drei';
+import { OrbitControls, Box, Text, Html, PerspectiveCamera, Edges } from '@react-three/drei';
 import * as THREE from 'three';
 import { getContainerItems } from '../../services/apiService';
 import { useThree, useFrame } from '@react-three/fiber';
@@ -185,6 +185,16 @@ const CargoContainer3D = () => {
   const [error, setError] = useState(null);
   const [showTable, setShowTable] = useState(false);
   const tableRef = useRef(null);
+
+  // Define clipping planes once
+  const clippingPlanes = containerDimensions ? [
+    new THREE.Plane(new THREE.Vector3(1, 0, 0), 0), // Left
+    new THREE.Plane(new THREE.Vector3(-1, 0, 0), containerDimensions.width), // Right
+    new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), // Bottom
+    new THREE.Plane(new THREE.Vector3(0, -1, 0), containerDimensions.height), // Top
+    new THREE.Plane(new THREE.Vector3(0, 0, 1), 0), // Front
+    new THREE.Plane(new THREE.Vector3(0, 0, -1), containerDimensions.depth) // Back
+  ] : [];
 
   // Helper function to check if two items overlap
   const doItemsOverlap = (item1, item2) => {
@@ -499,17 +509,17 @@ const CargoContainer3D = () => {
   };
 
   return (
-    <div className="p-4">
+    <div className="p-4 bg-gray-900 text-gray-200">
       <div className="mb-4 flex justify-between items-center">
         <div>
-          <label className="block text-sm font-medium mb-2">Select Container</label>
+          <label className="block text-sm font-medium mb-2 text-gray-300">Select Container</label>
           <select
             value={selectedContainer}
             onChange={(e) => {
               setSelectedContainer(e.target.value);
               setShowTable(false);
             }}
-            className="w-full p-2 border rounded"
+            className="w-full p-2 border border-gray-600 bg-gray-700 text-white rounded"
           >
             {containers.map(containerId => (
               <option key={containerId} value={containerId}>
@@ -529,19 +539,19 @@ const CargoContainer3D = () => {
       </div>
 
       <div className="mb-4">
-        <h3 className="text-sm font-medium">Container Dimensions:</h3>
-        <p className="text-sm">
+        <h3 className="text-sm font-medium text-gray-300">Container Dimensions:</h3>
+        <p className="text-sm text-gray-400">
           Width: {containerDimensions.width}cm, 
           Height: {containerDimensions.height}cm, 
           Depth: {containerDimensions.depth}cm
         </p>
-        <p className="text-sm mt-2">
-          Items in container: <span className="font-semibold">{containerItems.length}</span>
+        <p className="text-sm mt-2 text-gray-400">
+          Items in container: <span className="font-semibold text-gray-200">{containerItems.length}</span>
         </p>
       </div>
 
       {/* 3D Visualization Container */}
-      <div style={{ width: '100%', height: '600px', border: '1px solid #ccc', borderRadius: '4px', overflow: 'hidden', marginBottom: '2rem', position: 'relative' }}>
+      <div style={{ width: '100%', height: '600px', border: '1px solid #444', borderRadius: '4px', overflow: 'hidden', marginBottom: '2rem', position: 'relative', background: '#111827' }}>
         <Canvas 
           camera={{ position: [cameraDistance, cameraDistance, cameraDistance], fov: 50 }}
           gl={{ 
@@ -549,29 +559,19 @@ const CargoContainer3D = () => {
             antialias: true,
           }}
         >
-          <ambientLight intensity={0.5} />
-          <pointLight position={[cameraDistance, cameraDistance, cameraDistance]} />
+          <ambientLight intensity={0.6} />
+          <pointLight position={[cameraDistance, cameraDistance, cameraDistance]} intensity={0.8} />
           
           {/* Add overlays */}
           <CompassOverlay />
           <ZoomLevelOverlay />
           
           {/* Container */}
-          <Box
-            args={[
-              containerDimensions.width,
-              containerDimensions.height,
-              containerDimensions.depth
-            ]}
-            position={[containerCenter.x, containerCenter.y, containerCenter.z]}
-          >
-            <meshStandardMaterial 
-              color="#888888" 
-              wireframe 
-              transparent
-              opacity={0.2}
-              side={THREE.DoubleSide}
-            />
+          <Box args={[containerDimensions.width, containerDimensions.height, containerDimensions.depth]} position={[containerCenter.x, containerCenter.y, containerCenter.z]}>
+            <meshStandardMaterial color="#2a2a2a" transparent opacity={0.05} />
+            <Edges scale={1.01} threshold={15}>
+              <meshBasicMaterial color="#cccccc" />
+            </Edges>
           </Box>
 
           {/* Items */}
@@ -605,37 +605,45 @@ const CargoContainer3D = () => {
               return true;
             })
             .map((item, index) => {
-              // Calculate item dimensions
               const width = item.end_width_cm - item.start_width_cm;
               const height = item.end_height_cm - item.start_height_cm;
               const depth = item.end_depth_cm - item.start_depth_cm;
+              
+              const position = [
+                item.start_width_cm + width / 2,
+                item.start_height_cm + height / 2,
+                item.start_depth_cm + depth / 2
+              ];
 
-              // Calculate center position
-              const centerX = item.start_width_cm + (width / 2);
-              const centerY = item.start_height_cm + (height / 2);
-              const centerZ = item.start_depth_cm + (depth / 2);
+              const hue = (parseInt(item.item_id, 36) % 360);
+              const color = `hsl(${hue}, 70%, 50%)`;
 
-              // Generate a consistent color based on item ID
-              const hue = ((parseInt(item.item_id) || index) * 137.5) % 360;
+              // Create a custom geometry for the clipped box
+              const geometry = new THREE.BoxGeometry(width, height, depth);
 
               return (
-                <group key={`${item.item_id}-${index}`}>
-                  {/* Main item box - fully opaque */}
-                  <ClippedBox
-                    args={[width, height, depth]}
-                    position={[centerX, centerY, centerZ]}
-                    color={`hsl(${hue}, 85%, 50%)`}
-                    containerDimensions={containerDimensions}
-                  />
+                <group key={`item-${item.item_id}-${index}`} position={position}>
+                  {/* Main item mesh with clipping planes */}
+                  <mesh geometry={geometry}>
+                    <meshStandardMaterial
+                      color={color}
+                      clippingPlanes={clippingPlanes}
+                      depthWrite={true}
+                      side={THREE.DoubleSide}
+                      metalness={0.1}
+                      roughness={0.7}
+                    />
+                  </mesh>
                   
-                  {/* Wireframe outline - very subtle */}
-                  <ClippedBox
-                    args={[width + 0.1, height + 0.1, depth + 0.1]}
-                    position={[centerX, centerY, centerZ]}
-                    color={`hsl(${hue}, 90%, 30%)`}
-                    wireframe={true}
-                    containerDimensions={containerDimensions}
-                  />
+                  {/* Custom edges with clipping planes */}
+                  <lineSegments>
+                    <edgesGeometry attach="geometry" args={[geometry]} />
+                    <lineBasicMaterial 
+                      attach="material" 
+                      color="#ffffff" 
+                      clippingPlanes={clippingPlanes}
+                    />
+                  </lineSegments>
                 </group>
               );
             })}
@@ -690,4 +698,4 @@ const CargoContainer3D = () => {
   );
 };
 
-export default CargoContainer3D; 
+export default CargoContainer3D;

@@ -18,10 +18,10 @@ const Home = () => {
   
   // Status card colors
   const STATUS_COLORS = {
-    'In Storage': { bg: 'bg-blue-50', text: 'text-blue-600', border: 'border-blue-200' },
-    'In Transit': { bg: 'bg-yellow-50', text: 'text-yellow-600', border: 'border-yellow-200' },
-    'Retrieved': { bg: 'bg-green-50', text: 'text-green-600', border: 'border-green-200' },
-    'Expired': { bg: 'bg-red-50', text: 'text-red-600', border: 'border-red-200' }
+    'In Storage': { bg: 'bg-gray-800', text: 'text-blue-400', border: 'border-blue-900' },
+    'In Transit': { bg: 'bg-gray-800', text: 'text-yellow-400', border: 'border-yellow-900' },
+    'Retrieved': { bg: 'bg-gray-800', text: 'text-green-400', border: 'border-green-900' },
+    'Expired': { bg: 'bg-gray-800', text: 'text-red-400', border: 'border-red-900' }
   };
 
   const fetchData = async () => {
@@ -155,8 +155,12 @@ const Home = () => {
           <>
             <div className="grid grid-cols-4 gap-4 mb-6">
               {cargoStatus.map((item) => (
-                <Card key={item.status} className={`p-4 ${STATUS_COLORS[item.status].bg} border ${STATUS_COLORS[item.status].border} shadow-md`}>
-                  <CardContent>
+                <Card 
+                  key={item.status} 
+                  className={`p-4 border ${STATUS_COLORS[item.status].border} shadow-lg`} 
+                  sx={{ backgroundColor: '#1f2937' }}
+                >
+                  <CardContent sx={{ padding: '0 !important' }}>
                     <Typography variant="h6" className={STATUS_COLORS[item.status].text}>{item.status}</Typography>
                     <Typography variant="h4" className={`font-bold ${STATUS_COLORS[item.status].text}`}>{item.count}</Typography>
                   </CardContent>
@@ -165,8 +169,8 @@ const Home = () => {
             </div>
 
             <div className="grid grid-cols-2 gap-6">
-              <div className="p-4 bg-white shadow-lg rounded-lg">
-                <Typography variant="h6" className="mb-2">Container Fullness</Typography>
+              <div className="p-4 bg-gray-800 shadow-lg rounded-lg">
+                <Typography variant="h6" className="mb-2 text-white">Container Fullness</Typography>
                 {containerData && containerData.reduce((sum, item) => sum + item.value, 0) > 0 ? (
                   <ResponsiveContainer width="100%" height={300}>
                     <PieChart>
@@ -191,25 +195,25 @@ const Home = () => {
                     </PieChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="flex items-center justify-center h-[300px] text-gray-500">
+                  <div className="flex items-center justify-center h-[300px] text-gray-400">
                     No container data available
                   </div>
                 )}
               </div>
 
-              <div className="p-4 bg-white shadow-lg rounded-lg">
-                <Typography variant="h6" className="mb-2">Monthly Cargo Arrivals</Typography>
+              <div className="p-4 bg-gray-800 shadow-lg rounded-lg">
+                <Typography variant="h6" className="mb-2 text-white">Monthly Cargo Arrivals</Typography>
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={cargoArrivals}>
                     <XAxis 
                       dataKey="month" 
-                      tick={{ fontSize: 12 }}
+                      tick={{ fontSize: 12, fill: '#fff' }}
                       height={50}
                       angle={-30}
                       textAnchor="end"
                       interval={0}
                     />
-                    <YAxis />
+                    <YAxis tick={{ fill: '#fff' }} />
                     <Tooltip />
                     <Legend />
                     <Bar dataKey="count" fill="#82ca9d" />
@@ -218,12 +222,12 @@ const Home = () => {
               </div>
             </div>
 
-            <div className="mt-6 p-4 bg-white shadow-lg rounded-lg">
-              <Typography variant="h6" className="mb-2">Cargo Weight Trends</Typography>
+            <div className="mt-6 p-4 bg-gray-800 shadow-lg rounded-lg">
+              <Typography variant="h6" className="mb-2 text-white">Cargo Weight Trends</Typography>
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={weightTrends}>
-                  <XAxis dataKey="date" />
-                  <YAxis />
+                  <XAxis dataKey="date" tick={{ fill: '#fff' }} />
+                  <YAxis tick={{ fill: '#fff' }} />
                   <Tooltip />
                   <Legend />
                   <Line type="monotone" dataKey="weight" stroke="#ff7300" />
