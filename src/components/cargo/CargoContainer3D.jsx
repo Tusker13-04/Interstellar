@@ -669,10 +669,10 @@ const CargoContainer3D = () => {
                   <tr key={`legend-${item.item_id}-${index}`} className="border-t border-gray-200 bg-gray-700 hover:bg-gray-600">
                     <td className="px-4 py-2 text-white">{item.item_id}</td>
                     <td className="px-4 py-2 text-white">
-                      ({item.start_width_cm}, {item.start_depth_cm}, {item.start_height_cm})
+                      ({item.start_width_cm.toFixed(2)}, {item.start_depth_cm.toFixed(2)}, {item.start_height_cm.toFixed(2)})
                     </td>
                     <td className="px-4 py-2 text-white">
-                      ({item.end_width_cm}, {item.end_depth_cm}, {item.end_height_cm})
+                      ({item.end_width_cm.toFixed(2)}, {item.end_depth_cm.toFixed(2)}, {item.end_height_cm.toFixed(2)})
                     </td>
                     <td className="px-4 py-2 text-white">
                       {Math.round(item.end_width_cm - item.start_width_cm)}cm × 
