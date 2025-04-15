@@ -4,8 +4,8 @@ import { getLogs, clearLogs, searchItem, getContainerItems } from '../services/a
 const LogsComponent = () => {
   const [logs, setLogs] = useState([]);
   const [filters, setFilters] = useState({
-    startDate: '04-Apr-2025 10:47 AM',
-    endDate: '30-Apr-2025 10:47 AM',
+    startDate: '',
+    endDate: '',
     item_id: '',
     user_id: '',
     action_type: ''
@@ -136,8 +136,8 @@ const LogsComponent = () => {
       // Clear the logs state and reset filters
       setLogs([]);
       setFilters({
-        startDate: '04-Apr-2025 10:47 AM',
-        endDate: '30-Apr-2025 10:47 AM',
+        startDate: '',
+        endDate: '',
         item_id: '',
         user_id: '',
         action_type: ''
@@ -171,9 +171,9 @@ const LogsComponent = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Start Date</label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Start Date and Time</label>
             <input
-              type="text"
+              type="datetime-local"
               name="startDate"
               value={filters.startDate}
               onChange={handleChange}
@@ -182,9 +182,9 @@ const LogsComponent = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">End Date</label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">End Date and Time</label>
             <input
-              type="text"
+              type="datetime-local"
               name="endDate"
               value={filters.endDate}
               onChange={handleChange}
