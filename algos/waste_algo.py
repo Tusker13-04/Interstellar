@@ -4,15 +4,6 @@ import polars as pl
 import json
 
 def load_waste_items(filename: Optional[str] = None) -> List[Dict]:
-    """
-    Load waste items from CSV file.
-    
-    Args:
-        filename: Optional path to the waste items CSV file. Defaults to "waste_items.csv".
-        
-    Returns:
-        List of waste items with their properties
-    """
     try:
         file_to_load = filename or "waste_items.csv"
         waste_items_df = pl.read_csv(file_to_load)

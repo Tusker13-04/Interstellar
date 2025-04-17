@@ -76,111 +76,163 @@ const WasteManagement = () => {
 
   return (
     <div className="flex">
-      <div className="flex-1 p-6 bg-white shadow-lg rounded-lg max-w-4xl mx-auto">
-        <h2 className="text-2xl font-semibold mb-4"> Waste Management</h2>
-        
-        <button onClick={fetchWasteItems} className="w-full py-2 bg-blue-500 text-white rounded-md hover:bg-blue-700">
-          Identify Waste Items
-        </button>
-        {loading && <p className="mt-2 text-gray-500">Loading...</p>}
-        {message && (
-          <div className={`mt-4 p-3 rounded-md ${
-            message.includes('successfully') 
-              ? 'bg-green-50 border border-green-200 text-green-600' 
-              : 'bg-red-50 border border-red-200 text-red-600'
-          }`}>
-            {message}
-          </div>
-        )}
+  <div className="flex-1 max-w-4xl mx-auto relative overflow-hidden z-10 bg-gray-800 p-8 rounded-lg shadow-md before:w-24 before:h-24 before:absolute before:bg-purple-600 before:rounded-full before:-z-10 before:blur-2xl after:w-32 after:h-32 after:absolute after:bg-sky-400 after:rounded-full after:-z-10 after:blur-xl after:top-24 after:-right-12">
+    <h2 className="text-2xl font-bold text-white mb-6">Waste Management</h2>
 
-        {wasteItems.length > 0 && (
-          <div className="mt-4 p-4 bg-gray-100 rounded-lg">
-            <h3 className="text-lg font-medium">Waste Items:</h3>
-            <ul>
-              {wasteItems.map((item) => (
-                <li key={item.itemId} className="p-2 border-b">
-                  <strong>{item.name}</strong> - {item.reason}
+    <button
+      onClick={fetchWasteItems}
+      className="w-full py-2 bg-gradient-to-r from-purple-600 via-purple-400 to-blue-500 text-white font-bold rounded-md hover:opacity-80"
+    >
+      Identify Waste Items
+    </button>
+
+    {loading && <p className="mt-2 text-gray-400">Loading...</p>}
+
+    {message && (
+      <div
+        className={`mt-4 p-3 rounded-md text-sm ${
+          message.includes("successfully")
+            ? "bg-green-600 text-white"
+            : "bg-red-600 text-white"
+        }`}
+      >
+        {message}
+      </div>
+    )}
+
+    {wasteItems.length > 0 && (
+      <div className="mt-4 p-4 bg-gray-700 rounded-lg text-white">
+        <h3 className="text-lg font-medium mb-2">Waste Items:</h3>
+        <ul className="space-y-2 text-sm">
+          {wasteItems.map((item) => (
+            <li key={item.itemId} className="border-b border-gray-600 pb-2">
+              <strong>{item.name}</strong> - {item.reason}
+            </li>
+          ))}
+        </ul>
+      </div>
+    )}
+
+    <form onSubmit={handleReturnPlan} className="mt-6 space-y-4">
+      <h3 className="text-lg font-medium text-white">Request Return Plan</h3>
+
+      <input
+        type="text"
+        placeholder="Undocking Container ID"
+        name="undockingContainerId"
+        value={undockingInfo.undockingContainerId}
+        onChange={(e) =>
+          setUndockingInfo({
+            ...undockingInfo,
+            undockingContainerId: e.target.value,
+          })
+        }
+        required
+        className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white"
+      />
+
+      <input
+        type="date"
+        name="undockingDate"
+        value={undockingInfo.undockingDate}
+        onChange={(e) =>
+          setUndockingInfo({
+            ...undockingInfo,
+            undockingDate: e.target.value,
+          })
+        }
+        required
+        className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white"
+      />
+
+      <input
+        type="number"
+        placeholder="Max Weight (kg)"
+        name="maxWeight"
+        value={undockingInfo.maxWeight}
+        onChange={(e) =>
+          setUndockingInfo({
+            ...undockingInfo,
+            maxWeight: e.target.value,
+          })
+        }
+        required
+        className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white"
+      />
+
+      <button
+        type="submit"
+        className="w-full py-2 bg-gradient-to-r from-purple-600 via-purple-400 to-blue-500 text-white font-bold rounded-md hover:opacity-80"
+      >
+        Get Return Plan
+      </button>
+    </form>
+
+    {returnPlan && (
+      <div className="mt-6 p-4 bg-gray-700 rounded-lg text-white space-y-6">
+        <div>
+          <h3 className="text-lg font-medium mb-2">Return Manifest</h3>
+          <p className="text-sm">Container ID: {returnPlan.return_manifest.undocking_container_id}</p>
+          <p className="text-sm">Undocking Date: {new Date(returnPlan.return_manifest.undocking_date).toLocaleDateString()}</p>
+          <p className="text-sm">Total Weight: {returnPlan.return_manifest.total_weight} kg</p>
+          <p className="text-sm">Total Volume: {returnPlan.return_manifest.total_volume} m³</p>
+        </div>
+
+        {returnPlan.return_manifest.return_items.length > 0 && (
+          <div>
+            <h4 className="text-md font-medium mb-2">Items to Return:</h4>
+            <ul className="space-y-1 text-sm">
+              {returnPlan.return_manifest.return_items.map((item, index) => (
+                <li key={index}>
+                  • {item.name} (ID: {item.itemId}) - {item.reason}
                 </li>
               ))}
             </ul>
           </div>
         )}
 
-        <form onSubmit={handleReturnPlan} className="mt-6 space-y-4">
-          <h3 className="text-lg font-medium">Request Return Plan</h3>
-          <input type="text" placeholder="Undocking Container ID" name="undockingContainerId" value={undockingInfo.undockingContainerId} onChange={(e) => setUndockingInfo({ ...undockingInfo, undockingContainerId: e.target.value })} required className="w-full border p-2 rounded-md" />
-          <input type="date" name="undockingDate" value={undockingInfo.undockingDate} onChange={(e) => setUndockingInfo({ ...undockingInfo, undockingDate: e.target.value })} required className="w-full border p-2 rounded-md" />
-          <input type="number" placeholder="Max Weight (kg)" name="maxWeight" value={undockingInfo.maxWeight} onChange={(e) => setUndockingInfo({ ...undockingInfo, maxWeight: e.target.value })} required className="w-full border p-2 rounded-md" />
-          <button type="submit" className="w-full py-2 bg-green-500 text-white rounded-md hover:bg-green-700">Get Return Plan</button>
-        </form>
-        
-        {returnPlan && (
-          <div className="mt-4 p-4 bg-gray-100 rounded-lg">
-            <h3 className="text-lg font-medium mb-3">Return Plan:</h3>
-            <div className="space-y-4">
-              <div className="bg-white p-3 rounded-md shadow-sm">
-                <h4 className="font-medium text-gray-700">Return Manifest</h4>
-                <p className="text-sm text-gray-600">Container ID: {returnPlan.return_manifest.undocking_container_id}</p>
-                <p className="text-sm text-gray-600">Undocking Date: {new Date(returnPlan.return_manifest.undocking_date).toLocaleDateString()}</p>
-                <p className="text-sm text-gray-600">Total Weight: {returnPlan.return_manifest.total_weight} kg</p>
-                <p className="text-sm text-gray-600">Total Volume: {returnPlan.return_manifest.total_volume} m³</p>
-              </div>
-
-              {returnPlan.return_manifest.return_items.length > 0 && (
-                <div className="bg-white p-3 rounded-md shadow-sm">
-                  <h4 className="font-medium text-gray-700 mb-2">Items to Return:</h4>
-                  <ul className="space-y-2">
-                    {returnPlan.return_manifest.return_items.map((item, index) => (
-                      <li key={index} className="text-sm text-gray-600">
-                        • {item.name} (ID: {item.itemId}) - {item.reason}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {returnPlan.return_plan.length > 0 && (
-                <div className="bg-white p-3 rounded-md shadow-sm">
-                  <h4 className="font-medium text-gray-700 mb-2">Return Steps:</h4>
-                  <ol className="list-decimal list-inside space-y-2">
-                    {returnPlan.return_plan.map((step, index) => (
-                      <li key={index} className="text-sm text-gray-600">
-                        Move {step.item_name} from {step.from_container} to {step.to_container}
-                      </li>
-                    ))}
-                  </ol>
-                </div>
-              )}
-
-              {returnPlan.retrieval_steps.length > 0 && (
-                <div className="bg-white p-3 rounded-md shadow-sm">
-                  <h4 className="font-medium text-gray-700 mb-2">Retrieval Steps:</h4>
-                  <ol className="list-decimal list-inside space-y-2">
-                    {returnPlan.retrieval_steps.map((step, index) => (
-                      <li key={index} className="text-sm text-gray-600">
-                        {step.action.charAt(0).toUpperCase() + step.action.slice(1)} {step.item_name}
-                      </li>
-                    ))}
-                  </ol>
-                </div>
-              )}
-            </div>
+        {returnPlan.return_plan.length > 0 && (
+          <div>
+            <h4 className="text-md font-medium mb-2">Return Steps:</h4>
+            <ol className="list-decimal list-inside space-y-1 text-sm">
+              {returnPlan.return_plan.map((step, index) => (
+                <li key={index}>
+                  Move {step.item_name} from {step.from_container} to {step.to_container}
+                </li>
+              ))}
+            </ol>
           </div>
         )}
-        
-        <button 
-          onClick={handleCompleteUndocking} 
-          disabled={!undockingInfo.undockingContainerId}
-          className={`mt-6 w-full py-2 text-white rounded-md ${
-            !undockingInfo.undockingContainerId 
-              ? 'bg-gray-400 cursor-not-allowed' 
-              : 'bg-red-500 hover:bg-red-700'
-          }`}
-        >
-          Complete Undocking
-        </button>
+
+        {returnPlan.retrieval_steps.length > 0 && (
+          <div>
+            <h4 className="text-md font-medium mb-2">Retrieval Steps:</h4>
+            <ol className="list-decimal list-inside space-y-1 text-sm">
+              {returnPlan.retrieval_steps.map((step, index) => (
+                <li key={index}>
+                  {step.action.charAt(0).toUpperCase() + step.action.slice(1)} {step.item_name}
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
       </div>
-    </div>
+    )}
+
+    <button
+      onClick={handleCompleteUndocking}
+      disabled={!undockingInfo.undockingContainerId}
+      className={`mt-6 w-full py-2 text-white font-bold rounded-md ${
+        !undockingInfo.undockingContainerId
+          ? "bg-gray-600 cursor-not-allowed"
+          : "bg-gradient-to-r from-red-600 via-red-500 to-pink-500 hover:opacity-80"
+      }`}
+    >
+      Complete Undocking
+    </button>
+  </div>
+</div>
+
   );
 };
 

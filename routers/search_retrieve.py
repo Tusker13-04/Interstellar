@@ -351,25 +351,146 @@ def log_retrieval(itemId, userId, timestamp):
         writer = csv.writer(f)
         writer.writerow([itemId, userId, timestamp])
 
+def find_suitable_position(container_id, item_width, item_depth, item_height, cargo_df, containers_df):
+    """Find a suitable position for an item in a container."""
+    # Get container dimensions and zone
+    container_data = containers_df.filter(pl.col("containerId") == container_id)
+    if container_data.is_empty():
+        return None
+    
+    container_info = container_data.row(0, named=True)
+    container_width = float(container_info["width"])
+    container_depth = float(container_info["depth"])
+    container_height = float(container_info["height"])
+    container_zone = container_info["zone"]
+    
+    # Check if item fits in current container
+    if (item_width > container_width or 
+        item_depth > container_depth or 
+        item_height > container_height):
+        # Item is too big for this container, find a bigger container in the same zone
+        bigger_containers = containers_df.filter(
+            (pl.col("zone") == container_zone) &
+            (pl.col("width") >= item_width) &
+            (pl.col("depth") >= item_depth) &
+            (pl.col("height") >= item_height)
+        )
+        
+        if not bigger_containers.is_empty():
+            # Found bigger containers, suggest moving to the smallest one that fits
+            bigger_containers = bigger_containers.sort(
+                by=["width", "depth", "height"]
+            )
+            suggested_container = bigger_containers.row(0, named=True)
+            print(f"Item too big for {container_id}, suggesting move to {suggested_container['containerId']}")
+            return None
+            
+        print(f"No suitable container found in zone {container_zone} for item dimensions {item_width}x{item_depth}x{item_height}")
+        return None
+    
+    # Get existing items in the container
+    existing_items = cargo_df.filter(pl.col("containerId") == container_id)
+    
+    # If no existing items, place at origin
+    if existing_items.is_empty():
+        return {
+            "startCoordinates": {"width": 0, "depth": 0, "height": 0},
+            "endCoordinates": {"width": item_width, "depth": item_depth, "height": item_height}
+        }
+    
+    # Check if any existing items should be moved to smaller containers
+    for item in existing_items.iter_rows(named=True):
+        coords = item["coordinates"].strip()[1:-1].split("),(")
+        item_start = [float(x) for x in coords[0].split(",")]
+        item_end = [float(x) for x in coords[1].split(",")]
+        
+        existing_width = item_end[0] - item_start[0]
+        existing_depth = item_end[1] - item_start[1]
+        existing_height = item_end[2] - item_start[2]
+        
+        # Find smaller containers that could fit this item
+        smaller_containers = containers_df.filter(
+            (pl.col("zone") == container_zone) &
+            (pl.col("width") >= existing_width) &
+            (pl.col("depth") >= existing_depth) &
+            (pl.col("height") >= existing_height) &
+            (pl.col("width") < container_width) &
+            (pl.col("depth") < container_depth) &
+            (pl.col("height") < container_height)
+        )
+        
+        if not smaller_containers.is_empty():
+            print(f"Item {item['itemId']} could be moved to a smaller container in zone {container_zone}")
+    
+    # Try to find a position in the current container
+    # Try positions along the width axis
+    for x in range(0, int(container_width - item_width) + 1, 5):
+        # Try positions along the depth axis
+        for y in range(0, int(container_depth - item_depth) + 1, 5):
+            # Try positions along the height axis
+            for z in range(0, int(container_height - item_height) + 1, 5):
+                # Check if this position overlaps with any existing items
+                position_valid = True
+                
+                for item in existing_items.iter_rows(named=True):
+                    item_coordinates = item["coordinates"]
+                    coordinates = item_coordinates.strip()[1:-1].split("),(")
+                    item_start = coordinates[0].split(",")
+                    item_start = (float(item_start[0]), float(item_start[1]), float(item_start[2]))
+                    item_end = coordinates[1].split(",")
+                    item_end = (float(item_end[0]), float(item_end[1]), float(item_end[2]))
+                    
+                    # Check for overlap
+                    if (x < item_end[0] and (x + item_width) > item_start[0] and
+                        y < item_end[1] and (y + item_depth) > item_start[1] and
+                        z < item_end[2] and (z + item_height) > item_start[2]):
+                        position_valid = False
+                        break
+                
+                if position_valid:
+                    return {
+                        "startCoordinates": {"width": x, "depth": y, "height": z},
+                        "endCoordinates": {"width": x + item_width, "depth": y + item_depth, "height": z + item_height}
+                    }
+    
+    return None
+
 @router.post("/place", response_model=PlaceItemResponse)
 async def place_item(request: PlaceItemRequest):
     try:
         if not request.timestamp:
             request.timestamp = datetime.datetime.now().isoformat()
 
-        cargo_file = "cargo_arrangement.csv"
+        # Use the file paths defined at the top of the file
+        cargo_file = "temp_cargo_arrangement.csv"
         temp_cargo_file = "temp_cargo_arrangement.csv"
-        containers_file = "imported_containers.csv"
+        containers_file = "temp_imported_containers.csv"
+        items_file = "temp_imported_items.csv"
 
-        if not os.path.exists(cargo_file) or not os.path.exists(containers_file):
+        if not os.path.exists(cargo_file) or not os.path.exists(containers_file) or not os.path.exists(items_file):
             print(f"Required files not found")
             return {"success": False}
 
         cargo_df = pl.read_csv(cargo_file)
         containers_df = pl.read_csv(containers_file)
+        items_df = pl.read_csv(items_file)
 
         print(f"Cargo columns: {cargo_df.columns}")
         print(f"Containers columns: {containers_df.columns}")
+
+        # Convert itemId to integer for comparison
+        item_id = int(request.itemId) if isinstance(request.itemId, str) else request.itemId
+
+        # Get item dimensions
+        item_data = items_df.filter(pl.col("itemId") == item_id)
+        if item_data.is_empty():
+            print(f"Item ID {item_id} not found")
+            return {"success": False}
+        
+        item_info = item_data.row(0, named=True)
+        item_width = float(item_info["width"])
+        item_depth = float(item_info["depth"])
+        item_height = float(item_info["height"])
 
         container_data = containers_df.filter(pl.col("containerId") == request.containerId)
         if container_data.is_empty():
@@ -379,6 +500,36 @@ async def place_item(request: PlaceItemRequest):
         container_info = container_data.row(0, named=True)
         zone = container_info["zone"]
 
+        # Get all containers in the same zone
+        zone_containers = containers_df.filter(pl.col("zone") == zone)
+        
+        # Sort containers by size (volume)
+        zone_containers = zone_containers.with_columns([
+            (pl.col("width") * pl.col("depth") * pl.col("height")).alias("volume")
+        ]).sort("volume")
+
+        # Find the smallest container that can fit the item
+        suitable_container = None
+        for container in zone_containers.iter_rows(named=True):
+            if (item_width <= float(container["width"]) and
+                item_depth <= float(container["depth"]) and
+                item_height <= float(container["height"])):
+                suitable_container = container
+                break
+
+        if suitable_container and suitable_container["containerId"] != request.containerId:
+            # A more suitable container was found
+            print(f"Suggesting container {suitable_container['containerId']} for item {item_id}")
+            request.containerId = suitable_container["containerId"]
+
+        # If position is not provided, find a suitable position
+        if not request.position:
+            position = find_suitable_position(request.containerId, item_width, item_depth, item_height, cargo_df, containers_df)
+            if not position:
+                print(f"No suitable position found for item {item_id} in container {request.containerId}")
+                return {"success": False}
+            request.position = position
+
         # Get coordinates from the request's Position object
         start_coords = request.position.startCoordinates
         end_coords = request.position.endCoordinates
@@ -386,15 +537,60 @@ async def place_item(request: PlaceItemRequest):
         # Create coordinate string in the expected format
         coordinates_str = f"({start_coords.width},{start_coords.depth},{start_coords.height}),({end_coords.width},{end_coords.depth},{end_coords.height})"
 
-        item_exists = not cargo_df.filter(pl.col("itemId") == request.itemId).is_empty()
+        # Check for existing items that could be moved to smaller containers
+        existing_items = cargo_df.filter(pl.col("containerId") == request.containerId)
+        for item in existing_items.iter_rows(named=True):
+            coords = item["coordinates"].strip()[1:-1].split("),(")
+            item_start = [float(x) for x in coords[0].split(",")]
+            item_end = [float(x) for x in coords[1].split(",")]
+            
+            existing_width = item_end[0] - item_start[0]
+            existing_depth = item_end[1] - item_start[1]
+            existing_height = item_end[2] - item_start[2]
+            
+            # Find smaller containers that could fit this item
+            smaller_containers = zone_containers.filter(
+                (pl.col("width") >= existing_width) &
+                (pl.col("depth") >= existing_depth) &
+                (pl.col("height") >= existing_height) &
+                (pl.col("volume") < float(container_info["width"]) * float(container_info["depth"]) * float(container_info["height"]))
+            )
+            
+            if not smaller_containers.is_empty():
+                smaller_container = smaller_containers.row(0, named=True)
+                # Try to move the item to the smaller container
+                new_position = find_suitable_position(
+                    smaller_container["containerId"],
+                    existing_width,
+                    existing_depth,
+                    existing_height,
+                    cargo_df,
+                    containers_df
+                )
+                
+                if new_position:
+                    # Update the item's position in the smaller container
+                    cargo_df = cargo_df.with_columns([
+                        pl.when(pl.col("itemId") == int(item["itemId"]))
+                        .then(pl.lit(smaller_container["containerId"]))
+                        .otherwise(pl.col("containerId"))
+                        .alias("containerId"),
+                        
+                        pl.when(pl.col("itemId") == int(item["itemId"]))
+                        .then(pl.lit(f"({new_position['startCoordinates']['width']},{new_position['startCoordinates']['depth']},{new_position['startCoordinates']['height']}),({new_position['endCoordinates']['width']},{new_position['endCoordinates']['depth']},{new_position['endCoordinates']['height']})"))
+                        .otherwise(pl.col("coordinates"))
+                        .alias("coordinates")
+                    ])
+                else:
+                    print(f"Could not find suitable position in smaller container for item {item['itemId']}")
+            else:
+                print(f"No smaller containers available for item {item['itemId']}")
 
+        # Check for overlaps in the target container
         overlapping_items = cargo_df.filter(
-            (pl.col("zone") == zone) & 
-            (pl.col("itemId") != request.itemId)
+            (pl.col("containerId") == request.containerId) & 
+            (pl.col("itemId") != item_id)
         )
-
-        print(f"Checking for overlaps in container {request.containerId} at zone {zone}")
-        print(f"New item position: start={start_coords}, end={end_coords}")
 
         overlapping = False
         for item in overlapping_items.iter_rows(named=True):
@@ -409,16 +605,10 @@ async def place_item(request: PlaceItemRequest):
             start = (start_coords.width, start_coords.depth, start_coords.height)
             end = (end_coords.width, end_coords.depth, end_coords.height)
 
-            print(f"Checking against item {item['itemId']} at coordinates {item_coordinates}")
-            print(f"Item start: {item_start}, Item end: {item_end}")
-            print(f"New item start: {start}, New item end: {end}")
-
             # Check if the new item's position overlaps with existing items
-            # Using inclusive inequalities to handle adjacent items correctly
-            if (start[0] <= item_end[0] and end[0] >= item_start[0] and 
-                start[1] <= item_end[1] and end[1] >= item_start[1] and 
-                start[2] <= item_end[2] and end[2] >= item_start[2]):
-                print(f"Overlap detected with item {item['itemId']} at coordinates {item_coordinates}")
+            if (start[0] < item_end[0] and end[0] > item_start[0] and 
+                start[1] < item_end[1] and end[1] > item_start[1] and 
+                start[2] < item_end[2] and end[2] > item_start[2]):
                 overlapping = True
                 break
 
@@ -426,66 +616,35 @@ async def place_item(request: PlaceItemRequest):
             print(f"Cannot place item {request.itemId} in container {request.containerId} due to overlap")
             return {"success": False}
 
-        # Update the main cargo arrangement file
+        # Update the cargo files
+        item_exists = not cargo_df.filter(pl.col("itemId") == item_id).is_empty()
         if item_exists:
-            # For the main cargo file
-            updated_cargo_df = cargo_df.with_columns([
-                pl.when(pl.col("itemId") == request.itemId)
-                  .then(pl.lit(zone))
-                  .otherwise(pl.col("zone"))
-                  .alias("zone"),
-                pl.when(pl.col("itemId") == request.itemId)
-                  .then(pl.lit(coordinates_str))
-                  .otherwise(pl.col("coordinates"))
-                  .alias("coordinates")
+            cargo_df = cargo_df.with_columns([
+                pl.when(pl.col("itemId") == item_id)
+                .then(pl.lit(zone))
+                .otherwise(pl.col("zone"))
+                .alias("zone"),
+                pl.when(pl.col("itemId") == item_id)
+                .then(pl.lit(coordinates_str))
+                .otherwise(pl.col("coordinates"))
+                .alias("coordinates"),
+                pl.when(pl.col("itemId") == item_id)
+                .then(pl.lit(request.containerId))
+                .otherwise(pl.col("containerId"))
+                .alias("containerId")
             ])
-            updated_cargo_df.write_csv(cargo_file)
         else:
             new_row = pl.DataFrame({
-                "itemId": [request.itemId],
+                "itemId": [item_id],
                 "zone": [zone],
+                "containerId": [request.containerId],
                 "coordinates": [coordinates_str]
             })
-            updated_cargo_df = pl.concat([cargo_df, new_row])
-            updated_cargo_df.write_csv(cargo_file)
-        
-        # Also update the temp cargo arrangement file if it exists
-        if os.path.exists(temp_cargo_file):
-            try:
-                temp_cargo_df = pl.read_csv(temp_cargo_file)
-                temp_item_exists = not temp_cargo_df.filter(pl.col("itemId") == request.itemId).is_empty()
-                
-                if temp_item_exists:
-                    # Update existing item in temp file
-                    updated_temp_df = temp_cargo_df.with_columns([
-                        pl.when(pl.col("itemId") == request.itemId)
-                          .then(pl.lit(zone))
-                          .otherwise(pl.col("zone"))
-                          .alias("zone"),
-                        pl.when(pl.col("itemId") == request.itemId)
-                          .then(pl.lit(coordinates_str))
-                          .otherwise(pl.col("coordinates"))
-                          .alias("coordinates")
-                    ])
-                    updated_temp_df.write_csv(temp_cargo_file)
-                else:
-                    # Add new item to temp file
-                    new_row = pl.DataFrame({
-                        "itemId": [request.itemId],
-                        "zone": [zone],
-                        "coordinates": [coordinates_str]
-                    })
-                    updated_temp_df = pl.concat([temp_cargo_df, new_row])
-                    updated_temp_df.write_csv(temp_cargo_file)
-                
-                print(f"Updated both {cargo_file} and {temp_cargo_file}")
-            except Exception as e:
-                print(f"Error updating temp cargo file: {str(e)}")
-                print(f"Only updated the main cargo file")
-        else:
-            # Just copy the main file to the temp file
-            updated_cargo_df.write_csv(temp_cargo_file)
-            print(f"Created new {temp_cargo_file} as a copy of {cargo_file}")
+            cargo_df = pl.concat([cargo_df, new_row])
+
+        # Save the updated cargo files
+        cargo_df.write_csv(cargo_file)
+        cargo_df.write_csv(temp_cargo_file)
 
         return {"success": True}
 

@@ -197,166 +197,172 @@ const SimulationComponent = () => {
   };
 
   return (
-    <div className="flex-1 p-6 bg-white shadow-lg rounded-lg max-w-4xl mx-auto">
-      <h2 className="text-2xl font-semibold mb-4">Time Simulation</h2>
-      
-      <form onSubmit={handleSimulate} className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Number of Days
-            </label>
-            <input
-              type="number"
-              name="numOfDays"
-              value={formData.numOfDays}
-              onChange={handleInputChange}
-              placeholder="Enter number of days"
-              className="w-full border p-2 rounded-md"
-              min="1"
-              disabled={formData.toTimestamp !== ''}
-            />
-          </div>
+    <div className="max-w-4xl mx-auto relative overflow-hidden z-10 bg-gray-800 p-8 rounded-lg shadow-md before:w-24 before:h-24 before:absolute before:bg-purple-600 before:rounded-full before:-z-10 before:blur-2xl after:w-32 after:h-32 after:absolute after:bg-sky-400 after:rounded-full after:-z-10 after:blur-xl after:top-24 after:-right-12">
+  <h2 className="text-2xl font-bold text-white mb-6">Time Simulation</h2>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Target Date/Time
-            </label>
-            <input
-              type="datetime-local"
-              name="toTimestamp"
-              value={formData.toTimestamp}
-              onChange={handleInputChange}
-              className="w-full border p-2 rounded-md"
-              disabled={formData.numOfDays !== ''}
-            />
-          </div>
-        </div>
+  <form onSubmit={handleSimulate} className="space-y-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-1">
+          Number of Days
+        </label>
+        <input
+          type="number"
+          name="numOfDays"
+          value={formData.numOfDays}
+          onChange={handleInputChange}
+          placeholder="Enter number of days"
+          className="mt-1 p-2 w-full bg-gray-700 border border-gray-600 rounded-md text-white"
+          min="1"
+          disabled={formData.toTimestamp !== ''}
+        />
+      </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Item ID
-            </label>
-            <input
-              type="number"
-              name="itemId"
-              value={formData.itemId}
-              onChange={handleInputChange}
-              placeholder="Enter Item ID"
-              className="w-full border p-2 rounded-md"
-              disabled={formData.itemName !== ''}
-              min="1"
-            />
-          </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-1">
+          Target Date/Time
+        </label>
+        <input
+          type="datetime-local"
+          name="toTimestamp"
+          value={formData.toTimestamp}
+          onChange={handleInputChange}
+          className="mt-1 p-2 w-full bg-gray-700 border border-gray-600 rounded-md text-white"
+          disabled={formData.numOfDays !== ''}
+        />
+      </div>
+    </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Item Name
-            </label>
-            <input
-              type="text"
-              name="itemName"
-              value={formData.itemName}
-              onChange={handleInputChange}
-              placeholder="Enter Item Name"
-              className="w-full border p-2 rounded-md"
-              disabled={formData.itemId !== ''}
-            />
-          </div>
-        </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-1">
+          Item ID
+        </label>
+        <input
+          type="number"
+          name="itemId"
+          value={formData.itemId}
+          onChange={handleInputChange}
+          placeholder="Enter Item ID"
+          className="mt-1 p-2 w-full bg-gray-700 border border-gray-600 rounded-md text-white"
+          disabled={formData.itemName !== ''}
+          min="1"
+        />
+      </div>
 
-        <p className="text-sm text-gray-500 italic">
-          Note: Provide either Item ID or Item Name, not both
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-1">
+          Item Name
+        </label>
+        <input
+          type="text"
+          name="itemName"
+          value={formData.itemName}
+          onChange={handleInputChange}
+          placeholder="Enter Item Name"
+          className="mt-1 p-2 w-full bg-gray-700 border border-gray-600 rounded-md text-white"
+          disabled={formData.itemId !== ''}
+        />
+      </div>
+    </div>
+
+    <p className="text-sm text-gray-400 italic">
+      Note: Provide either Item ID or Item Name, not both
+    </p>
+
+    <button
+      type="submit"
+      disabled={loading}
+      className={`w-full py-2 font-bold rounded-md text-white ${
+        loading
+          ? 'bg-gray-500 cursor-not-allowed'
+          : 'bg-gradient-to-r from-purple-600 via-purple-400 to-blue-500 hover:opacity-80'
+      }`}
+    >
+      {loading ? 'Running Simulation...' : 'Run Simulation'}
+    </button>
+  </form>
+
+  {message && (
+    <div
+      className={`mt-6 p-3 rounded-md font-medium ${
+        message.includes('successfully')
+          ? 'bg-green-100 border border-green-300 text-green-800'
+          : 'bg-red-100 border border-red-300 text-red-800'
+      }`}
+    >
+      {message}
+    </div>
+  )}
+
+  {simulationResults?.success && (
+    <div className="mt-8 space-y-6 text-sm text-white">
+      <div className="bg-blue-900/30 p-4 rounded-md border border-blue-600">
+        <p className="text-blue-300 font-semibold">
+          Final Simulation Date: {formatDate(simulationResults.newDate)}
         </p>
+      </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className={`w-full py-2 text-white rounded-md ${
-            loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600'
-          }`}
-        >
-          {loading ? 'Running Simulation...' : 'Run Simulation'}
-        </button>
-      </form>
-
-      {message && (
-        <div className={`mt-4 p-3 rounded-md ${
-          message.includes('successfully')
-            ? 'bg-green-50 border border-green-200 text-green-600'
-            : 'bg-red-50 border border-red-200 text-red-600'
-        }`}>
-          {message}
+      {getSummarizedItemData().length > 0 && (
+        <div className="bg-gray-700 p-4 rounded-md border border-gray-600">
+          <h4 className="font-semibold mb-2">Items Status After Simulation:</h4>
+          <ul className="list-disc pl-5 space-y-2 text-gray-300">
+            {getSummarizedItemData().map((item, index) => (
+              <li key={`used-${index}`}>
+                <span className="font-semibold">{item.name}</span>
+                <br />
+                <span className="text-gray-400">
+                  {item.count > 1
+                    ? `${item.count} items with average of ${Math.round(
+                        item.totalRemainingUses / item.count
+                      )} uses left (range: ${item.minRemainingUses}-${item.maxRemainingUses})`
+                    : `Remaining Uses: ${item.totalRemainingUses}`}
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
-      {simulationResults && simulationResults.success && (
-        <div className="mt-6 space-y-4 text-sm">
-          <div className="bg-blue-50 p-4 rounded-md">
-            <p className="text-blue-700 font-medium">
-              Final Simulation Date: {formatDate(simulationResults.newDate)}
+      {getSummarizedExpiredItems().length > 0 && (
+        <div className="bg-yellow-900/20 p-4 rounded-md border border-yellow-600">
+          <h4 className="font-semibold mb-2 text-yellow-300">Expired Items:</h4>
+          <ul className="list-disc pl-5 space-y-2 text-yellow-200">
+            {getSummarizedExpiredItems().map((item, index) => (
+              <li key={`expired-${index}`}>
+                {item.name} {item.count > 1 ? `(${item.count} items)` : ''}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {getSummarizedDepletedItems().length > 0 && (
+        <div className="bg-red-900/20 p-4 rounded-md border border-red-600">
+          <h4 className="font-semibold mb-2 text-red-300">Depleted Items:</h4>
+          <ul className="list-disc pl-5 space-y-2 text-red-200">
+            {getSummarizedDepletedItems().map((item, index) => (
+              <li key={`depleted-${index}`}>
+                {item.name} {item.count > 1 ? `(${item.count} items)` : ''}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {getSummarizedItemData().length === 0 &&
+        getSummarizedExpiredItems().length === 0 &&
+        getSummarizedDepletedItems().length === 0 && (
+          <div className="bg-gray-700 p-4 rounded-md border border-gray-600">
+            <p className="text-gray-300">
+              No changes to report for this simulation.
             </p>
           </div>
-
-          {getSummarizedItemData().length > 0 && (
-            <div className="bg-gray-50 p-4 rounded-md">
-              <h4 className="font-medium mb-2">Items Status After Simulation:</h4>
-              <ul className="list-disc pl-5 space-y-2">
-                {getSummarizedItemData().map((item, index) => (
-                  <li key={`used-${index}`}>
-                    <span className="font-medium">
-                      {item.name}
-                    </span>
-                    <br />
-                    <span className="text-gray-600">
-                      {item.count > 1 
-                        ? `${item.count} items with average of ${Math.round(item.totalRemainingUses / item.count)} uses left (range: ${item.minRemainingUses}-${item.maxRemainingUses})`
-                        : `Remaining Uses: ${item.totalRemainingUses}`
-                      }
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {getSummarizedExpiredItems().length > 0 && (
-            <div className="bg-yellow-50 p-4 rounded-md">
-              <h4 className="font-medium mb-2 text-yellow-800">Expired Items:</h4>
-              <ul className="list-disc pl-5 space-y-2">
-                {getSummarizedExpiredItems().map((item, index) => (
-                  <li key={`expired-${index}`} className="text-yellow-800">
-                    {item.name} {item.count > 1 ? `(${item.count} items)` : ''}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {getSummarizedDepletedItems().length > 0 && (
-            <div className="bg-red-50 p-4 rounded-md">
-              <h4 className="font-medium mb-2 text-red-800">Depleted Items:</h4>
-              <ul className="list-disc pl-5 space-y-2">
-                {getSummarizedDepletedItems().map((item, index) => (
-                  <li key={`depleted-${index}`} className="text-red-800">
-                    {item.name} {item.count > 1 ? `(${item.count} items)` : ''}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {getSummarizedItemData().length === 0 &&
-           getSummarizedExpiredItems().length === 0 &&
-           getSummarizedDepletedItems().length === 0 && (
-            <div className="bg-gray-50 p-4 rounded-md">
-              <p className="text-gray-600">No changes to report for this simulation.</p>
-            </div>
-          )}
-        </div>
-      )}
+        )}
     </div>
+  )}
+</div>
+
   );
 };
 

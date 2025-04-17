@@ -13,14 +13,14 @@ function SideNavBar() {
   }, [location.pathname]);
 
   return (
-    <div className="w-64 p-6 py-10 h-full border-r border-gray-800 bg-black/80 backdrop-blur-xl shadow-lg">
+    <div className="w-64 p-6 py-10 h-full border-r border-gray-900 bg-black/90 backdrop-blur-xl shadow-lg">
       <div className="flex justify-center">
         <Link to="/home">
           <div
             className="text-2xl md:text-3xl font-bold tracking-wide font-aeonik"
             style={{ color: "#DBFF00" }}
           >
-            INTERSTELLAR
+            <h1>INTERSTELLAR</h1>
           </div>
         </Link>
       </div>
